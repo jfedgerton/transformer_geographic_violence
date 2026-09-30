@@ -1,0 +1,41 @@
+# data (large, license-gated, or regeneratable)
+data_raw/
+data_intermediate/
+data_model/
+logs/
+outputs/*
+!outputs/crps_v1_pgm_africame.csv
+!outputs/crps_v2_pgm_africame.csv
+!outputs/crps_v3_delta_ci.csv
+!outputs/crps_v3_incremental.csv
+!outputs/crps_v4_stack_result.csv
+!outputs/crps_v4_stack_sweep.csv
+!outputs/fews_transfer_v1.csv
+!outputs/latam_me_transfer_v1.csv
+!outputs/crime_ft_results.csv
+!outputs/crime_ft_scratch_frozen_f1.0.csv
+!outputs/crime_ft_scratch_ft_f0.01.csv
+!outputs/crime_ft_scratch_ft_f0.05.csv
+!outputs/crime_ft_scratch_ft_f0.25.csv
+!outputs/crime_ft_scratch_ft_f1.0.csv
+!outputs/crime_ft_warm_frozen_f0.25.csv
+!outputs/crime_ft_warm_frozen_f1.0.csv
+!outputs/crime_ft_warm_ft_f0.25.csv
+!outputs/crime_ft_warm_ft_f1.0.csv
+
+# superseded / backup snapshots
+archive/
+_backup_phase1_20260528/
+_patch_backup_20260914/
+
+# encoded duplicate artifacts (redundant with plain .py files already in repo)
+*.b64
+
+# python / editor cruft
+__pycache__/
+*.pyc
+*.bak
+.idea/
+venv/
+*.bak*
+*.tar.gz

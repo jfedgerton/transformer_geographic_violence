@@ -1,0 +1,2 @@
+arm,frac,seed,test_ap,test_bestf1,n_test,pos_test,val_ap
+warm_ft,0.25,123,0.4441,0.4526,1898672,0.1002,0.4463

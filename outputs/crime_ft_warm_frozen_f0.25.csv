@@ -1,0 +1,2 @@
+arm,frac,seed,test_ap,test_bestf1,n_test,pos_test,val_ap
+warm_frozen,0.25,123,0.4285,0.445,1898672,0.1002,0.4369
