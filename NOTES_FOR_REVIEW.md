@@ -49,3 +49,10 @@ load-bearing for the current manuscript, note the following.
   scripts/.xv3.b64, scripts/.xv4.b64): base64-encoded duplicates of
   plain .py files already present elsewhere in the repo. Verified by
   decoding; not malicious, just redundant.
+
+## Update 2026-10-06 (audit + archive)
+- Provenance of every manuscript table is in RESULTS_MANIFEST.md (copy of outputs/MANIFEST.md on Roar).
+- Table 2 (pretrained+1% vs scratch) used the June Gen-2 encoder (repr_model_L_holdout_s123, MLM objective, 10-unit holdout, ROC-AUC), not the LORO contrastive-e encoder behind Tables 1/3/4. Re-run under the LORO design with PR-AUC: scripts/phase4_scaling/transfer_eval_region_ft.py + launch_region_ft.sbatch (job 56128289). Output: outputs/ft_region_L_contrastive_e_loro_{region}_s123.csv.
+- Gen 1-3 pilot checkpoints, lr/tune/smoke checkpoints, embedding diagnostics, CRPS chain, June transfer pilots, and the fews/latam_me probes were moved (not deleted) to archive/gen1-3_pre_loro_20261006/ on Roar. The tracked CSVs among them show as deleted in this commit; they remain in git history and in the Roar archive.
+- outputs/figures/heatmap_*_e.png are dated 2026-06-25 and predate the LORO runs; regenerate before use.
+- Cross-domain probes (dengue, crime, incl. *_lnopen LayerNorm ablations) are closed as null results; see Dropbox RESULTS_cross_domain_transfer_NEGATIVE.md.
