@@ -29,6 +29,10 @@ if [ "$GRID_ARM" = "finetune" ]; then export GRID_SHARES=${SHS[$((i / 18))]}; fi
 # value is never inherited by accident.
 : "${VOCAB_REMAP:?pass VOCAB_REMAP=1 (main) or 0 (_vorig) in --export}"
 export VOCAB_REMAP
+# target: incidence (main) or civilian (any violence-against-civilians event next month; outputs carry "_civ")
+export GRID_TARGET=${GRID_TARGET:-incidence}
+case "$GRID_TARGET" in incidence|civilian) ;; *) echo "GRID_TARGET must be incidence or civilian"; exit 1;; esac
+unset GRID_ROOT
 case "$VOCAB_REMAP" in 0|1) ;; *) echo "VOCAB_REMAP must be 0 or 1"; exit 1;; esac
-echo "[task] $i VOCAB_REMAP=$VOCAB_REMAP SWEEP=$GRID_SWEEP ARM=$GRID_ARM RG=$EVAL_REGION SEED=$EVAL_SEED SHARE=${GRID_SHARES:-all}"
+echo "[task] $i TARGET=$GRID_TARGET VOCAB_REMAP=$VOCAB_REMAP SWEEP=$GRID_SWEEP ARM=$GRID_ARM RG=$EVAL_REGION SEED=$EVAL_SEED SHARE=${GRID_SHARES:-all}"
 python scripts/phase4_scaling/share_grid_conflict.py

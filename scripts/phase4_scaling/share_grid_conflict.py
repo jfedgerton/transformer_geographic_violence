@@ -21,7 +21,16 @@ Outputs (outputs/share_grid/, never overwritten):
   sweep_finetune_{RG}_s{SEED}_f{share}.csv    every (arm, draw, lr, wd) tried: best val PR, best epoch
   preds_{ARM}_{RG}_s{SEED}[_f{share}].npz      test-period forecasts (float32) for every reported row, plus the
                                                test-row identity (__grid_id, __year_month, __y) for cross-job checks
+  avail_{ARM}_{RG}_s{SEED}[_f{share}].csv      per share x draw: "ok" or the floor that made it not estimable
+                                               (train_positives_below_floor / val_pool_below_floor), with counts
   Files are written as .part and renamed only when the whole job finishes; a .part file means an interrupted run.
+Targets (Oct 15): GRID_TARGET=incidence (main) or civilian (any violence-against-civilians event next month, built as in
+  transfer_eval_region_fullpreds.py; outputs carry "_civ"). GRID_PREFLIGHT=1 writes preflight_{target}_{region}.csv
+  (which share x draw cells pass the positive floors) and exits without training.
+Divergence (Oct 15, Codex 9): a fine-tuning configuration whose batch loss, gradient norm or validation forecasts become
+  non-finite is recorded as diverged in the sweep file and skipped. If the configuration chosen on draw 0 diverges on a
+  later draw, that arm sweeps the full grid on that draw (sweep rows carry fallback=True); the other arm keeps its
+  draw-0 choice. This is an adaptive rule and is reported as such. If every configuration diverges the job stops.
 Vocabulary (main specification, decided 2026-10-10): tokens the encoder never saw in pretraining are mapped to <UNK>
   for every arm and row (vocab_remap.py). VOCAB_REMAP=0 runs the original vocabulary (appendix sensitivity check);
   its outputs carry "_vorig" in the job name.
@@ -33,7 +42,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import roc_auc_score, average_precision_score
 import xgboost as xgb
 
-R = "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast"
+R = os.environ.get("GRID_ROOT", "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast")
 E = os.environ.get
 RG = E("EVAL_REGION"); SEED = int(E("EVAL_SEED", "123")); ARM = E("GRID_ARM", "nested")
 SMOKE = E("SMOKE", "0") == "1"
@@ -48,10 +57,13 @@ DRAWS = [int(x) for x in E("GRID_DRAWS", "0,1,2,3,4").split(",")]
 LRS = [float(x) for x in E("GRID_LRS", "3e-5,1e-4,3e-4,1e-3").split(",")]
 WDS = [float(x) for x in E("GRID_WDS", "0,0.01").split(",")]
 SWEEP = E("GRID_SWEEP", "draw0")
+TARGET = E("GRID_TARGET", "incidence")       # incidence (main) | civilian (any violence-against-civilians event next month)
+assert TARGET in ("incidence", "civilian"), TARGET
 MAX_EP = int(E("GRID_MAX_EP", "50")); PATIENCE = int(E("GRID_PATIENCE", "5")); MIN_DELTA = 1e-4
 VAL_MIN_POS = 10; MIN_TRAIN_POS = 5; DRAW_BASE = 123; XGB_SEED = 123
 assert SWEEP in ("draw0", "all"), SWEEP
-if ARM == "finetune": assert len(SHARES) == 1, "finetune jobs take exactly one share"
+PREFLIGHT = E("GRID_PREFLIGHT", "0") == "1"   # count-only: write which share x draw cells are estimable, then exit
+if ARM == "finetune" and not PREFLIGHT: assert len(SHARES) == 1, "finetune jobs take exactly one share"
 if SMOKE:
     SHARES = SHARES[:1] if ARM == "finetune" else [0.01, 0.05]
     DRAWS = [0, 1]; LRS = [1e-4, 1e-3]; WDS = [0.0]; MAX_EP = 3; PATIENCE = 2
@@ -60,9 +72,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from vocab_remap import remap_enabled, remap_tables
 VOCAB_REMAP = remap_enabled(); VSUF = "" if VOCAB_REMAP else "_vorig"
 OD = f"{R}/outputs/share_grid"; os.makedirs(OD, exist_ok=True)
-JOB = f"{ARM}_{RG}_s{SEED}" + (f"_f{SHARES[0]:g}" if ARM == "finetune" else "") + VSUF + SUF
+TSUF = "" if TARGET == "incidence" else "_civ"
+JOB = f"{ARM}_{RG}_s{SEED}" + (f"_f{SHARES[0]:g}" if ARM == "finetune" else "") + VSUF + TSUF + SUF
 OUT_M = f"{OD}/metrics_{JOB}.csv"; OUT_P = f"{OD}/preds_{JOB}.npz"; OUT_S = f"{OD}/sweep_{JOB}.csv"
-assert not os.path.exists(OUT_M), f"refusing to overwrite completed job {OUT_M}"   # metrics file = completion marker
+OUT_A = f"{OD}/avail_{JOB}.csv"                # per share x draw: estimable or skipped, with reason and positive counts
+OUT_PF = f"{OD}/preflight_{TARGET}_{RG}.csv"
+if PREFLIGHT: assert not os.path.exists(OUT_PF), f"refusing to overwrite {OUT_PF}"
+else: assert not os.path.exists(OUT_M), f"refusing to overwrite completed job {OUT_M}"   # metrics file = completion marker
 for f in (OUT_P, OUT_S):                       # orphans from an interrupted publish (metrics never renamed) are replaced
     if os.path.exists(f): print(f"[recover] {f} exists without {OUT_M}; it will be overwritten", flush=True)
 TMP_M, TMP_P, TMP_S = OUT_M + ".part", OUT_P + ".part.npz", OUT_S + ".part"   # interrupted runs leave only these
@@ -155,7 +171,25 @@ base_cols = ["violence_lag1", "violence_lag3", "violence_lag6", "spatial_lag_vio
              "violent_count_roll1", "violent_count_roll3", "all_count_roll1", "any_event_lag1",
              "log_event_density_lag1", "months_since_last_event"]
 panel = pd.read_parquet(f"{R}/data_intermediate/baseline_features_super.parquet",
-                        columns=["grid_id", "year_month", "event_sequence", "violence_next_month"] + base_cols)
+                        columns=["grid_id", "year_month", "event_sequence", "violence_next_month",
+                                 "etype_violence_against_civilians"] + base_cols)
+# civilian target, same construction as transfer_eval_region_fullpreds.py: count of violence-against-civilians events in
+# month t (civ_now) and in month t+1 (civ_next = next row of the same cell). Built on the full panel before the region
+# row filter so that a missing country label never shifts a cell's months. The panel has no month gaps within cells.
+# The panel's own row order is NOT changed: the share draws index rows by position, so reordering would change which
+# rows every incidence draw selects. The label is built on a sorted copy and written back by index.
+_srt = panel[["grid_id", "year_month", "etype_violence_against_civilians"]].sort_values(["grid_id", "year_month"], kind="mergesort")
+_g = _srt["grid_id"].to_numpy(); _per = pd.PeriodIndex(_srt["year_month"].astype(str), freq="M")
+_mi = (_per.year * 12 + _per.month).to_numpy()
+assert ((_g[1:] != _g[:-1]) | (_mi[1:] - _mi[:-1] == 1)).all(), "month gap within a cell; civ_next would misalign"
+_srt["civ_now"] = _srt["etype_violence_against_civilians"].fillna(0.0)
+_nx = _srt.groupby("grid_id")["civ_now"].shift(-1)
+_srt["civ_has_next"] = _nx.notna()              # Codex 9, F01: an absent outcome month is never turned into a negative
+_srt["civ_next"] = _nx.fillna(0.0)
+panel["civ_now"] = _srt["civ_now"]; panel["civ_next"] = _srt["civ_next"]       # index-aligned, original order kept
+panel["civ_has_next"] = _srt["civ_has_next"]
+assert panel["civ_next"].notna().all()
+del _srt, _g, _per, _mi, _nx
 cm = pd.read_parquet(f"{R}/data_intermediate/baseline_features.parquet", columns=["grid_id", "year_month", "country"])
 panel = panel.merge(cm, on=["grid_id", "year_month"], how="left")
 d = panel[panel["country"].isin(REGION_COUNTRIES) & panel["violence_next_month"].notna()].sort_values("year_month").reset_index(drop=True)
@@ -168,7 +202,11 @@ d[FEATS] = d[FEATS].fillna(0.0)
 X = d[FEATS].to_numpy(np.float32)
 ym = d["year_month"].astype(str).to_numpy()
 trm = (ym >= TRAIN_START) & (ym <= TRAIN_END); vam = (ym > TRAIN_END) & (ym <= VAL_END); tem = ym >= TEST_START
-y = d["violence_next_month"].to_numpy().astype(int)
+y = (d["violence_next_month"].to_numpy().astype(int) if TARGET == "incidence"
+     else (d["civ_next"].to_numpy() > 0).astype(int))      # rows still require violence_next_month (same rows as the main grid)
+if TARGET == "civilian":
+    assert d["civ_has_next"].all(), f"{int((~d['civ_has_next']).sum())} retained rows have no observed next month"
+print(f"[target] {TARGET}: positive rate {y.mean():.4f}", flush=True)
 seqs = d["event_sequence"].values; gids = d["grid_id"].values
 te_idx = np.where(tem)[0]
 if SMOKE: te_idx = np.sort(np.random.default_rng(0).choice(te_idx, size=min(20000, len(te_idx)), replace=False))
@@ -190,6 +228,25 @@ def draw_rows(mask, share, k, purpose):
     elif npos < MIN_TRAIN_POS: return None
     return np.sort(np.concatenate([rng.choice(pos, npos, replace=False), rng.choice(neg, nneg, replace=False)]))
 
+avail_rows = []
+def draw_status(s, k, need_val):
+    """Training (and, for fine-tuning, validation) draw for share s, draw k, plus an availability record (Codex 9, F03)."""
+    tr = draw_rows(trm, s, k, 0); va = draw_rows(vam, s, k, 1) if need_val else None
+    tp = int((y[trm] == 1).sum()); vp = int((y[vam] == 1).sum())
+    reason = ("ok" if tr is not None and (va is not None or not need_val)
+              else "train_positives_below_floor" if tr is None else "val_pool_below_floor")
+    avail_rows.append(dict(region=RG, enc_seed=SEED, arm=ARM, target=TARGET, share=s, draw=k, status=reason,
+                           train_pool_pos=tp, train_sel_pos=int(round(tp * s)), min_train_pos=MIN_TRAIN_POS,
+                           val_pool_pos=vp if need_val else np.nan, min_val_pos=VAL_MIN_POS if need_val else np.nan))
+    return tr, va, reason
+
+if PREFLIGHT:
+    for s_ in SHARES:
+        for k_ in DRAWS: draw_status(s_, k_, ARM == "finetune")
+    A = pd.DataFrame(avail_rows); A.to_csv(OUT_PF + ".part", index=False); os.replace(OUT_PF + ".part", OUT_PF)
+    print(A.groupby(["share", "status"]).size().to_string()); print(f"[preflight done] {OUT_PF}", flush=True)
+    sys.exit(0)
+
 def scores(yt, p):
     return dict(pr=float(average_precision_score(yt, p)), roc=float(roc_auc_score(yt, p)),
                 brier=float(np.mean((np.clip(p, 0, 1) - yt) ** 2)))
@@ -204,10 +261,12 @@ def emit(model, share, k, idx, p, **extra):
     pd.DataFrame(rows).to_csv(TMP_M, index=False)
     print(f"  [{model}] share={share:g} draw={k} n={r['n_train']} PR={r['pr']:.4f} ROC={r['roc']:.4f}", flush=True)
 
-emit("persistence", 0.0, -1, None, np.nan_to_num(d["violence_lag1"].to_numpy())[te_idx].astype(float))
+_pers = (np.nan_to_num(d["violence_lag1"].to_numpy()) if TARGET == "incidence"
+         else d["civ_now"].to_numpy())                     # civilian persistence = month-t count, as in the main evaluator
+emit("persistence", 0.0, -1, None, _pers[te_idx].astype(float))
 
 if ARM == "nested":
-    draws = {(s, k): draw_rows(trm, s, k, 0) for s in SHARES for k in DRAWS}
+    draws = {(s, k): draw_status(s, k, False)[0] for s in SHARES for k in DRAWS}
     need = np.unique(np.concatenate([v for v in draws.values() if v is not None] + [te_idx]))
     enc = new_encoder(True); enc.eval()
     Z = []; t0 = time.time()
@@ -251,9 +310,17 @@ else:
             clf.train()
             for t, m, st, yy in ld:
                 loss = crit(clf(t.to(DEVICE), m.to(DEVICE), st.to(DEVICE)), yy.to(DEVICE))
-                opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(clf.parameters(), 1.0); opt.step()
-            assert torch.isfinite(loss), "non-finite training loss"
-            v = float(average_precision_score(yva, predict(clf, ds_va)))
+                if not torch.isfinite(loss):              # diverged (Codex 9, F02): checked every batch, before the step
+                    return None, float("-inf"), 0, ep
+                opt.zero_grad(); loss.backward()
+                gn = torch.nn.utils.clip_grad_norm_(clf.parameters(), 1.0)
+                if not torch.isfinite(gn):                # non-finite gradient = diverged; never applied
+                    return None, float("-inf"), 0, ep
+                opt.step()
+            pva = predict(clf, ds_va)
+            if not np.isfinite(pva).all():                # non-finite validation forecasts = diverged
+                return None, float("-inf"), 0, ep
+            v = float(average_precision_score(yva, pva))
             improved = v > best + MIN_DELTA                    # MIN_DELTA governs patience only
             if v > best: best, best_ep, best_sd = v, ep, {kk: t_.detach().cpu().clone() for kk, t_ in clf.state_dict().items()}
             bad = 0 if improved else bad + 1
@@ -262,22 +329,42 @@ else:
         return clf, best, best_ep, ep
     chosen = {}
     for k in DRAWS:
-        tr = draw_rows(trm, s, k, 0); va = draw_rows(vam, s, k, 1)
-        if tr is None or va is None: print(f"  [skip] share={s:g} draw={k}: too few positives", flush=True); continue
+        tr, va, why = draw_status(s, k, True)
+        if why != "ok": print(f"  [skip] share={s:g} draw={k}: {why}", flush=True); continue
         for arm_name, pretrained in (("ft_pretrained", True), ("ft_scratch", False)):
-            grid = [(lr, wd) for lr in LRS for wd in WDS] if (SWEEP == "all" or arm_name not in chosen) else [chosen[arm_name]]
+            full_grid = [(lr, wd) for lr in LRS for wd in WDS]
+            grid = full_grid if (SWEEP == "all" or arm_name not in chosen) else [chosen[arm_name]]
             best = None
             for lr, wd in grid:
                 t0 = time.time()
                 clf, vpr, bep, lep = train_one(pretrained, lr, wd, tr, va, k)
                 sweep_rows.append(dict(region=RG, enc_seed=SEED, model=arm_name, share=s, draw=k, lr=lr, wd=wd,
-                                       val_pr=vpr, best_epoch=bep, last_epoch=lep, n_train=len(tr), n_val=len(va),
-                                       val_pos=int(y[va].sum()), secs=round(time.time() - t0)))
+                                       val_pr=vpr if clf is not None else np.nan, diverged=clf is None,
+                                       best_epoch=bep, last_epoch=lep, n_train=len(tr), n_val=len(va),
+                                       val_pos=int(y[va].sum()), secs=round(time.time() - t0), fallback=False))
                 pd.DataFrame(sweep_rows).to_csv(TMP_S, index=False)
                 print(f"    {arm_name} draw={k} lr={lr:g} wd={wd:g} valPR={vpr:.4f} best_ep={bep} stop_ep={lep} "
                       f"{time.time()-t0:.0f}s", flush=True)
+                if clf is None:
+                    print(f"    {arm_name} draw={k} lr={lr:g} wd={wd:g} DIVERGED at epoch {lep}; skipped", flush=True)
+                    continue
                 if best is None or vpr > best[0]: best = (vpr, lr, wd, bep, clf)
                 del clf                                         # winner (if any) is held only by `best`
+            if best is None and grid != full_grid:              # the draw-0 choice diverged on this draw: sweep this draw
+                print(f"    {arm_name} draw={k}: chosen config diverged; sweeping the full grid for this draw", flush=True)
+                for lr, wd in full_grid:
+                    if (lr, wd) in grid: continue
+                    t0 = time.time()
+                    clf, vpr, bep, lep = train_one(pretrained, lr, wd, tr, va, k)
+                    sweep_rows.append(dict(region=RG, enc_seed=SEED, model=arm_name, share=s, draw=k, lr=lr, wd=wd,
+                                           val_pr=vpr if clf is not None else np.nan, diverged=clf is None,
+                                           best_epoch=bep, last_epoch=lep, n_train=len(tr), n_val=len(va),
+                                           val_pos=int(y[va].sum()), secs=round(time.time() - t0), fallback=True))
+                    pd.DataFrame(sweep_rows).to_csv(TMP_S, index=False)
+                    if clf is None: continue
+                    if best is None or vpr > best[0]: best = (vpr, lr, wd, bep, clf)
+                    del clf
+            assert best is not None, f"{arm_name} draw={k}: every learning-rate setting diverged"
             if arm_name not in chosen: chosen[arm_name] = (best[1], best[2])
             emit(arm_name, s, k, tr, predict(best[4], ds_te), lr=best[1], wd=best[2], best_epoch=best[3],
                  val_pr=best[0], n_val=len(va))
@@ -288,6 +375,12 @@ else:
 np.savez_compressed(TMP_P, **TEST_ID, **preds)
 chk = np.load(TMP_P)                                     # default allow_pickle=False must work
 assert all(k in chk.files for k in preds) and chk["__year_month"].dtype.kind == "U"
+A = pd.DataFrame(avail_rows)
+n_ok = int((A.status == "ok").sum())
+exp_models = {"base", "emb_base"} if ARM == "nested" else {"ft_pretrained", "ft_scratch"}
+got = {k_ for k_ in preds if not k_.startswith("persistence")}
+assert len(got) == n_ok * len(exp_models), f"{len(got)} forecasts for {n_ok} estimable draws"   # every estimable draw has both arms
+A.to_csv(OUT_A + ".part", index=False); os.replace(OUT_A + ".part", OUT_A)      # availability published before the marker
 if os.path.exists(TMP_S): os.replace(TMP_S, OUT_S)
 os.replace(TMP_P, OUT_P); os.replace(TMP_M, OUT_M)
 print(f"[done] {OUT_M} ({len(rows)} rows), {OUT_P}", flush=True)
