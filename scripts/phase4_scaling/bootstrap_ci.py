@@ -54,6 +54,8 @@ def ap_w(pr, w):
     tp = np.cumsum(ws * ys)[ends]; fp = np.cumsum(ws * (1.0 - ys))[ends]
     den = tp + fp
     prec = np.divide(tp, den, out=np.zeros_like(tp), where=den > 0)
+    if tp[-1] <= 0:                                   # Codex 7, B01: a resample with no positives scores 0, never NaN
+        return 0.0
     rec = tp / tp[-1]
     return float(np.sum(np.diff(np.r_[0.0, rec]) * prec))
 
@@ -83,6 +85,8 @@ for rg in REGIONS:
         zr = np.load(f"{O}/preds_region_{tag}_rand.npz", allow_pickle=True)
         gid = z["grid_id"].astype(np.int64); ym = np.asarray(z["year_month"]).astype(str)
         y = z["y"].astype(int)
+        assert not pd.MultiIndex.from_arrays([gid, ym]).duplicated().any(), f"{tag}: duplicate keys"   # Codex 7, B04
+        assert set(np.unique(z["y"]).tolist()) <= {0, 1}, f"{tag}: labels not binary"                     # Codex 7, B03
         if ref is None: ref = (gid, ym, y)
         assert np.array_equal(gid, ref[0]) and np.array_equal(ym, ref[1]) and np.array_equal(y, ref[2]), f"{tag}: rows differ across seeds"
         assert np.array_equal(zr["grid_id"].astype(np.int64), gid) and np.array_equal(np.asarray(zr["year_month"]).astype(str), ym), f"{tag}: random-encoder rows differ"
@@ -94,6 +98,7 @@ for rg in REGIONS:
         arrays[("emb_base", sd)] = z["emb_base"]; arrays[("base", sd)] = z["base"]; arrays[("rand_emb_base", sd)] = zr["emb_base"]
         g = np.load(f"{O}/share_grid/preds_nested_{rg}_s{sd}.npz")
         key = pd.Series(np.arange(len(g["__y"])), index=pd.MultiIndex.from_arrays([g["__grid_id"].astype(np.int64), g["__year_month"].astype(str)]))
+        assert key.index.is_unique, f"{rg} s{sd}: duplicate (grid_id, year_month) keys in the share-grid forecasts"   # Codex 7, B04
         pos = key.reindex(pd.MultiIndex.from_arrays([gid, ym])).to_numpy()
         assert not np.isnan(pos).any() and len(g["__y"]) == len(y), f"{rg} s{sd}: share-grid test rows differ from the main evaluation"
         pos = pos.astype(int); assert np.array_equal(g["__y"].astype(int)[pos], y)
@@ -115,6 +120,11 @@ for rg in REGIONS:
         row = (ref[0] - 1) // 720; col = (ref[0] - 1) % 720
         assert (row >= 0).all() and (row < 360).all()
         unit_id = (row // 10) * 1000 + (col // 10)
+    for k, v in arrays.items():                       # Codex 7, B03: every forecast vector finite and row-aligned
+        assert len(v) == len(ref[2]) and np.isfinite(np.asarray(v, np.float64)).all(), f"{rg} {k}: non-finite or misaligned forecasts"
+    need = [(f"share_{m}_{shr:g}_{k}", s) for m in ("base", "emb_base") for shr in SHARES for k in DRAWS for s in SEEDS]
+    miss = [k for k in need if k not in arrays]       # Codex 7, B02: all seed x draw pairs present for every share
+    assert not miss, f"{rg}: {len(miss)} share forecasts missing, e.g. {miss[:3]}"
     cells, cidx = np.unique(unit_id, return_inverse=True)
     y = ref[2]
     data[rg] = dict(y=y, cidx=cidx, ncell=len(cells), pr={k: prep(v, y) for k, v in arrays.items()})
@@ -128,9 +138,8 @@ def stats(rg, w):
     out["nested"] = np.mean([ap[("emb_base", s)] - ap[("base", s)] for s in SEEDS])
     out["random"] = np.mean([ap[("emb_base", s)] - ap[("rand_emb_base", s)] for s in SEEDS])
     for shr in SHARES:
-        sh = [ap[(f"share_emb_base_{shr:g}_{k}", s)] - ap[(f"share_base_{shr:g}_{k}", s)] for s in SEEDS for k in DRAWS
-              if (f"share_emb_base_{shr:g}_{k}", s) in ap and (f"share_base_{shr:g}_{k}", s) in ap]
-        out[f"share_{shr:g}"] = float(np.mean(sh)) if sh else np.nan
+        sh = [ap[(f"share_emb_base_{shr:g}_{k}", s)] - ap[(f"share_base_{shr:g}_{k}", s)] for s in SEEDS for k in DRAWS]
+        out[f"share_{shr:g}"] = float(np.mean(sh))
     return out
 
 
@@ -155,6 +164,7 @@ for i, rg in enumerate(REGIONS):
         wc = np.bincount(rng.integers(0, d["ncell"], d["ncell"]), minlength=d["ncell"]).astype(np.float64)
         st = stats(rg, wc[d["cidx"]])
         for c in COMPS: draws[rg][c][b] = st[c]
+        assert all(np.isfinite(st[c]) for c in COMPS), f"{rg} replicate {b}: non-finite statistic"
         if (b + 1) % 100 == 0: print(f"  [{rg}] {b + 1}/{B}", flush=True)
 
 rows = []
@@ -164,8 +174,8 @@ for c in COMPS:
             e = float(np.mean([est[r][c] for r in REGIONS])); x = np.mean([draws[r][c] for r in REGIONS], axis=0)
         else:
             e = float(est[rg][c]); x = draws[rg][c]
-        rows.append(dict(comparison=c, region=rg, estimate=e, lo95=float(np.nanpercentile(x, 2.5)),
-                         hi95=float(np.nanpercentile(x, 97.5)), share_le0=float(np.mean(x <= 0)), B=B))
+        rows.append(dict(comparison=c, region=rg, estimate=e, lo95=float(np.percentile(x, 2.5)),
+                         hi95=float(np.percentile(x, 97.5)), share_le0=float(np.mean(x <= 0)), B=B))
 res = pd.DataFrame(rows)
 np.savez_compressed(OUT_NPZ, **{f"{rg}|{c}": draws[rg][c] for rg in REGIONS for c in COMPS})
 res.to_csv(OUT_CSV, index=False)
