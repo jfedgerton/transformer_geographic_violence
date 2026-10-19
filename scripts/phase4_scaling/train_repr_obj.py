@@ -54,7 +54,7 @@ FEATSET_PRIO = {"a": False, "b": False, "c": False, "e": True, "f": True}
 E = os.environ.get
 TAG       = os.environ["REPR_TAG"]
 CAP       = E("REPR_CAPACITY", "M")
-VARIANT   = E("REPR_VARIANT", "holdout")
+VARIANT = os.environ["REPR_VARIANT"]  # 2026-10-19: no default; every run must set it explicitly
 SEED      = int(E("REPR_SEED", "123"))
 SAMPLE_W  = E("REPR_SAMPLE_WEIGHT", "conflict")
 BUFFER    = float(E("REPR_BUFFER_DEG", "0.0"))
@@ -82,6 +82,8 @@ if LORO:
 TV_A = float(E("TVERSKY_ALPHA", "0.3")); TV_B = float(E("TVERSKY_BETA", "0.7"))
 TEMP = float(E("CONTRAST_TEMP", "0.1")); AUG_P = float(E("CONTRAST_AUG_P", "0.15"))
 assert CAP in CAPACITY and VARIANT in ("full","holdout","africa")
+assert not (LORO and VARIANT != "full"), "2026-10-19: LORO runs must use REPR_VARIANT=full (only the target region is excluded)"
+DRYRUN = E("REPR_DRYRUN", "0") == "1"
 assert OBJECTIVE in ("mlm","autoregressive","contrastive","tversky")
 assert FEATSET in FEATSET_SEL, f"bad FEATSET {FEATSET}"
 SEL = FEATSET_SEL[FEATSET]
@@ -146,16 +148,55 @@ elif VARIANT == "holdout":
         drop |= ((lat >= a0-b)&(lat <= a1+b)&(lon >= o0-b)&(lon <= o1+b))
     for col in country_cols:
         drop |= panel[col].to_numpy() == 1
-    if LORO:
-        drop |= panel["country"].isin(LORO_COUNTRIES).to_numpy()
     panel = panel[~drop].reset_index(drop=True)
     print(f"[filter] holdout -> {len(panel):,} rows", flush=True)
+# 2026-10-19: the target-region exclusion applies under every variant (it was nested inside the holdout branch).
+if LORO:
+    n_before = len(panel)
+    panel = panel[~panel["country"].isin(LORO_COUNTRIES)].reset_index(drop=True)
+    print(f"[filter] loro {LORO} -> dropped {n_before - len(panel):,} rows, {len(panel):,} remain", flush=True)
+    assert not panel["country"].isin(LORO_COUNTRIES).any(), "target-region rows remain"
 if MAX_ROWS > 0 and len(panel) > MAX_ROWS:
     panel = panel.sample(n=MAX_ROWS, random_state=SEED).reset_index(drop=True)
     print(f"[smoke] subsampled to {len(panel):,}", flush=True)
 train_df = panel[panel["split"] == "train"].reset_index(drop=True)
 val_df   = panel[panel["split"] == "val"].reset_index(drop=True)
 print(f"[data] train={len(train_df):,} val={len(val_df):,}", flush=True)
+# 2026-10-19 manifest: record exactly what this encoder is pretrained on, and fail loudly on a wrong data scope.
+import hashlib
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from regions import REGION_OF as _RO
+_ctry = panel["country"].astype(str).value_counts()
+_present = set(_ctry.index)
+_regions_present = sorted({_RO.get(c, "UNMAPPED") for c in _present})
+manifest = dict(tag=TAG, variant=VARIANT, loro=LORO, capacity=CAP, objective=OBJECTIVE, featset=FEATSET,
+                seed=SEED, lr=LR, patience=PATIENCE, min_delta=MIN_DELTA, max_epochs=MAX_EP, max_rows=MAX_ROWS,
+                panel=PANEL_PATH, vocab=VOCAB_PATH, n_rows=int(len(panel)), n_train=int(len(train_df)),
+                n_val=int(len(val_df)),
+                train_months=[str(train_df["year_month"].min()), str(train_df["year_month"].max())],
+                val_months=[str(val_df["year_month"].min()), str(val_df["year_month"].max())],
+                n_countries=int(len(_present)), regions_present=_regions_present,
+                rows_by_region={r: int(sum(int(_ctry[c]) for c in _present if _RO.get(c, "UNMAPPED") == r)) for r in _regions_present},
+                unmapped_countries=sorted(c for c in _present if c not in _RO),
+                holdout26_present=sorted(c for c in HOLDOUT_COUNTRIES if c in _present),
+                countries=sorted(_present),
+                script_md5=hashlib.md5(open(os.path.abspath(__file__), "rb").read()).hexdigest())
+print("[manifest] " + json.dumps({k: v for k, v in manifest.items() if k != "countries"}), flush=True)
+assert manifest["train_months"][1] <= "2020-12" and manifest["val_months"] == ["2021-01", "2021-12"], "time split changed"
+if LORO:
+    assert LORO not in _regions_present, f"target region {LORO} present in pretraining"
+if VARIANT == "full":
+    _expected26 = [c for c in HOLDOUT_COUNTRIES if not (LORO and _RO.get(c) == LORO)]
+    _missing = [c for c in _expected26 if c not in _present]
+    assert not _missing, f"full variant but these countries are missing: {_missing}"
+_mpath = os.path.join(LOG_DIR if DRYRUN else MODEL_DIR, f"{'dryrun_' if DRYRUN else ''}repr_model_{TAG}.manifest.json")
+with open(_mpath, "w") as _f:
+    json.dump(manifest, _f, indent=1)
+print(f"[manifest] wrote {_mpath}", flush=True)
+if DRYRUN:
+    print("[dryrun] counts and manifest only; exiting before training", flush=True)
+    sys.exit(0)
+assert not os.path.exists(os.path.join(MODEL_DIR, f"repr_model_{TAG}.pt")), "checkpoint exists; refusing to overwrite"
 if len(train_df) == 0 or len(val_df) == 0:
     raise RuntimeError("empty train or val")
 

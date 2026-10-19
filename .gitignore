@@ -39,3 +39,7 @@ __pycache__/
 venv/
 *.bak*
 *.tar.gz
+
+slurm-*.out
+__pycache__/
+*.zip

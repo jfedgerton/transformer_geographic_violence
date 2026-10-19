@@ -33,5 +33,6 @@ export REPR_MAX_EPOCHS=30
 export REPR_PATIENCE=5
 export REPR_MIN_DELTA=1e-3
 echo "[xlsub] i=$i TAG=$REPR_TAG LR=$LR MAX_ROWS=1000000"
+export REPR_VARIANT=holdout  # 2026-10-19: as originally run (was the script default); required now that the default is removed
 python scripts/phase4_scaling/train_repr_obj.py
 echo "XLSUB_DONE_${REPR_TAG}"
