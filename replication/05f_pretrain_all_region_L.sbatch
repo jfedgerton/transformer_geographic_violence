@@ -1,0 +1,1 @@
+../scripts/phase4_scaling/launch_fullsrc_all.sbatch
