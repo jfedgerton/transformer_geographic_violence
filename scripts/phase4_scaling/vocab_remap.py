@@ -42,10 +42,14 @@ def remap_tables(tag, fields, vsm, enabled):
         print(f"[vocab] remap OFF (original vocabulary) for {tag}", flush=True)
         return luts
     assert region is not None, f"VOCAB_REMAP=1 but {tag} is not a LORO encoder; set VOCAB_REMAP=0 explicitly"
-    path = f"{R}/data_intermediate/seen_tokens_loro_{region}.json"
+    # 2026-10-20: full-source encoders saw the 26 countries in pretraining, so they use their own seen-token sets
+    variant = "fullsrc" if "_fullsrc_" in tag else "holdout"
+    path = (f"{R}/data_intermediate/seen_tokens_fullsrc_loro_{region}.json" if variant == "fullsrc"
+            else f"{R}/data_intermediate/seen_tokens_loro_{region}.json")
     assert os.path.exists(path), f"missing {path}; run build_seen_tokens.py first"
     seen = json.load(open(path))
     assert seen["region"] == region, f"{path} is for {seen['region']}, not {region}"
+    assert seen.get("variant", "holdout") == variant, f"{path} was built for variant {seen.get('variant', 'holdout')}, encoder {tag} is {variant}"
     for i, f in enumerate(fields):
         if f in NO_REMAP: continue
         assert f in seen["tokens"], f"{path} has no field {f}"

@@ -1,1 +1,1 @@
-../scripts/phase4_scaling/launch_eval_vocab.sbatch
+../scripts/phase4_scaling/launch_fullsrc_eval.sbatch

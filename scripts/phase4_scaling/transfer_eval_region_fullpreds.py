@@ -35,8 +35,10 @@ CAP = TAG.split("_")[0]   # capacity prefix from tag, e.g. XL_contrastive_a_s123
 assert CAP in CAPACITY, f"unrecognized capacity prefix in EVAL_TAG={TAG} (got {CAP})"
 EMBED_DIM, N_LAYERS, N_HEADS = CAPACITY[CAP]
 MAX_SEQ_LEN, BATCH = 200, 512
-TRAIN_END, TEST_START = "2020-12", "2022-01"
+TRAIN_START, TRAIN_END, TEST_START = "1990-01", "2020-12", "2022-01"  # 2026-10-20: heads train on 1990-01..2020-12, matching share_grid_conflict.py and the manuscript
+VAL_START, VAL_END = "2021-01", "2021-12"  # 2026-10-20: 2021 validation mode, used only to choose the encoder size
 SEED = int(re.search(r"_s(\d+)", TAG).group(1)) if re.search(r"_s(\d+)", TAG) else 123
+HEAD_SEED = 123  # 2026-10-20: every XGBoost head uses this fixed seed, so differences across encoder seeds come from the encoder only
 OBJ = TAG.split("_")[1]
 FEAT = TAG.split("_")[2]
 SUPER_FIELDS = ["event_type", "sub_event_type", "actor1", "actor2", "actor1_type",
@@ -60,6 +62,15 @@ if EVAL_REGION:
     OUT = f"{R}/outputs/eval_region_{TAG}.csv"
     print(f"[region] EVAL_REGION={EVAL_REGION}: {len(REGION_COUNTRIES)} countries -> {OUT}", flush=True)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if "_fullsrc_" in TAG:
+    # 2026-10-20: refuse a full-source encoder unless its manifest shows the right data scope
+    _mf = f"{R}/data_model/repr_model_{TAG}.manifest.json"
+    assert os.path.exists(_mf), f"missing manifest {_mf}"
+    _man = json.load(open(_mf))
+    assert _man["tag"] == TAG and _man["variant"] == "full", f"manifest scope wrong: {_man.get('tag')} {_man.get('variant')}"
+    assert EVAL_REGION and _man["loro"] == EVAL_REGION, f"manifest loro={_man['loro']} but EVAL_REGION={EVAL_REGION}"
+    assert EVAL_REGION not in _man["regions_present"], "target region present in this encoder's pretraining"
+    print(f"[manifest] OK {TAG}: variant=full, loro={_man['loro']}, pretraining rows={_man['n_rows']:,}", flush=True)
 torch.manual_seed(SEED); np.random.seed(SEED); rng = np.random.default_rng(SEED)
 print(f"[cfg] TAG={TAG} OBJ={OBJ} FEAT={FEAT} fields={FIELDS} prio={USE_PRIO} dev={DEVICE}", flush=True)
 
@@ -158,7 +169,7 @@ def xgb_pr(Xtr, ytr, Xte, yte, objective="binary:logistic"):
     if ytr.sum() < 3 or len(np.unique(yte)) < 2:
         return None, None
     clf = xgb.train({"objective": objective, "max_depth": 6, "eta": 0.1, "subsample": 0.8,
-                     "colsample_bytree": 0.8, "seed": SEED}, xgb.DMatrix(Xtr, label=ytr), 200)
+                     "colsample_bytree": 0.8, "seed": HEAD_SEED}, xgb.DMatrix(Xtr, label=ytr), 200)
     p = clf.predict(xgb.DMatrix(Xte))
     return p, average_precision_score(yte, p)
 
@@ -273,7 +284,7 @@ def score_block(unit, mode, d, tr, te, Z):
     if te.sum() >= 30:
         def crps_for(X):
             reg = xgb.train({"objective": "count:poisson", "max_depth": 6, "eta": 0.1,
-                             "subsample": 0.8, "seed": SEED}, xgb.DMatrix(X[tr], label=fnext[tr]), 200)
+                             "subsample": 0.8, "seed": HEAD_SEED}, xgb.DMatrix(X[tr], label=fnext[tr]), 200)
             lam = np.clip(reg.predict(xgb.DMatrix(X[te])), 1e-6, None)
             return crps_ens(rng.poisson(lam[:, None], size=(len(lam), 100)).astype(float), fnext[te]).mean()
         add("severity_crps", "persistence", np.abs(fnow[te] - fnext[te]).mean(), te.sum())
@@ -297,9 +308,15 @@ for uname in UNITS:
     Z = extract(enc, d["event_sequence"].values, d["grid_id"].values)
     ym = d["year_month"].to_numpy()
     # Mode B: temporal
-    trb = ym <= TRAIN_END; teb = ym >= TEST_START
+    trb = (ym >= TRAIN_START) & (ym <= TRAIN_END); teb = ym >= TEST_START
+    assert str(ym[trb].min()) == TRAIN_START and str(ym[trb].max()) == TRAIN_END, f"train window {ym[trb].min()}..{ym[trb].max()} != {TRAIN_START}..{TRAIN_END}"
     if trb.sum() >= 100 and teb.sum() >= 30:
         score_block(uname.replace(" ", "_"), "B_temporal", d, trb, teb, Z)
+    # 2026-10-20: 2021 validation score for size selection. Head trained <=2020-12, scored 2021-01..2021-12
+    # (the encoders' early-stopping year), so the 2022+ test window plays no part in choosing the size.
+    trv = (ym >= TRAIN_START) & (ym <= TRAIN_END); tev = (ym >= VAL_START) & (ym <= VAL_END)
+    if trv.sum() >= 100 and tev.sum() >= 30:
+        score_block(uname.replace(" ", "_"), "V_val2021", d, trv, tev, Z)
     # Mode A: time-pooled 5-fold CV (aggregate folds by re-scoring each as test)
     kf = KFold(n_splits=5, shuffle=True, random_state=SEED)
     idx = np.arange(len(d))
