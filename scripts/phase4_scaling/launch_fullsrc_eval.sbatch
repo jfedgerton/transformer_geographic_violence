@@ -5,7 +5,7 @@
 #SBATCH --partition=standard
 #SBATCH --gres=gpu:a100:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=96G
+#SBATCH --mem=192G
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/fseval_%A_%a.out
 #SBATCH --error=logs/fseval_%A_%a.err
