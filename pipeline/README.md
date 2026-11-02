@@ -1,0 +1,106 @@
+# Pipeline (consolidated, Phase 1, 2026-11-02)
+
+Code that reproduces every number, table and figure reported in the main text and appendix of
+"Spatial Violence Embeddings for Geographic Transfer Learning". Results that are no longer reported are not covered.
+
+Phase 1 of the consolidation replaced the v5 drivers (`replication_v5/`, 13 files) and the 37 Slurm launchers with two
+files. The analysis scripts are unchanged. The v5 layout is kept at git tag `v5-as-run` and stays in the tree until the
+review of this phase is finished.
+
+## Layout
+
+```
+pipeline/
+  run.sh           driver: checks, then submits every job with its resources and dependencies (stages 00-09)
+  tasks.sbatch     the only Slurm job script; TASK=<name> selects the job body (one branch per former launcher)
+  manifest.csv     every file the pipeline runs, with md5, size and role
+  tests/parity_phase1.py   proves run.sh + tasks.sbatch submit exactly what the v5 drivers + launchers submitted
+scripts/           analysis code, byte-identical to the code that produced the reported results
+scripts/replication_v5/   code written for the package (figure and table generators, author tools)
+```
+
+## Stages
+
+| Stage | What it runs | Reported items |
+|---|---|---|
+| 00 setup | input and environment checks, provenance log | none |
+| 01 build_panel | ACLED + UCDP ingest and merge, PRIO-GRID cell-month panel, sequences, baseline features, PRIO-GRID statics, seen-token lists | Tables 1, 21 inputs |
+| 02 pretrain | 18 leave-one-region-out encoders per size (S, M, L) | all |
+| 03 frozen_eval | persistence, base, base + embedding, random-weight encoder (S, M, L); month-t persistence (M) | Fig 3, Sec 4.1, Tables 2, 4, 5, 13, 15, 17 |
+| 04 finetune_grids | nested grid (M) and top-two and full fine-tuning grids (S, M, L), 7 shares x 5 draws x 3 seeds | Fig 5, Sec 4.2, Tables 6, 18, 19, 21-23 |
+| 05 bootstrap | paired block and cell bootstraps | intervals throughout, Tables 11, 12 |
+| 06 alerts | equal-budget alert counts, cell files and maps, country rates | Sec 4.1-4.2 counts, App C, App J, Fig 19 |
+| 07 appendix | Ukraine (top-two and full arms), CES turnout, crime, dengue | Table 7, Figs 11-15, App D-F, Table 8, App Y |
+| 08 brazil | SIM mortality panels, M/S/L Brazil runs, bootstraps | Fig 6, Fig 16, Tables 10, 20, App B, T.3-T.4 |
+| 09 figures_tables | all figures and LaTeX tables from the result files | Figs 3-6, 9, 10, 16-18; Tables 2, 4-8, 10-13, 15, 17-23 |
+
+Not generated (hand-made in the manuscript source): Figs 1, 2 and 7 (TikZ), Table 1 (design choices), Table 9 (ICD-10 mapping).
+
+## Running
+
+```
+bash pipeline/run.sh all             # every stage, chained with afterok
+bash pipeline/run.sh 03 04 05        # a subset; missing upstream outputs are checked on disk
+DRY=1 bash pipeline/run.sh all       # run every check and print every sbatch line; submit nothing
+venv/bin/python pipeline/tests/parity_phase1.py   # no data needed; works in a scratch copy, submits nothing
+```
+
+All checks for the requested stages run before the first job is submitted. If any check fails, nothing is submitted.
+Most writing scripts refuse to overwrite their outputs, and the stage checks require those outputs to be absent, so a
+rerun needs a clean tree (or archived outputs). A DRY run on a finished tree lists every existing output as `DRY-EXISTS`
+in `logs/pipeline_*.log`. Stages 03 and 04 require the line `FULLSRC_DONE_<tag>` in `logs/fullsrc_*.out` for every
+encoder (written by the pretraining jobs), so keep `logs/` between stages.
+
+Seeds: encoders 123, 456, 789; XGBoost, training-share draws and bootstraps use fixed seeds set inside the scripts.
+
+## What Phase 1 changed, and how it was checked
+
+- Each former launcher is one `TASK` branch in `tasks.sbatch` with the same environment and command. Launchers that
+  differed only by a parameter share a branch: pretraining S/M/L (`SIZE`), frozen eval and random-encoder eval,
+  random-encoder and share bootstraps, the Brazil M and S headline runs and their bootstraps (`XD_CAP`).
+- Resources (account, partition, GPU, CPUs, memory, time, array, job name, log name) moved from launcher headers to
+  `run.sh`, using the effective values of the v5 runs (header plus the v5 driver's overrides).
+- Branches of the old Brazil launchers for unreported job sets were not carried over.
+- `tasks.sbatch` runs with `set -eo pipefail`; a few old launchers had no `set -e`.
+- `run_dengue_ingest` now has a job name and writes `logs/dengue_ingest_<jobid>.out` (was `slurm-<jobid>.out` in the root).
+- `tests/parity_phase1.py`: 77 of 77 submissions with identical effective options, dependencies and wrapped commands;
+  1,499 job bodies (every job x every array index) with identical command lines and model-relevant environment.
+  A deliberately changed learning rate and memory request were both caught.
+
+## Requirements
+
+- Slurm cluster. GPU stages use A100, A40 or P100 GPUs as set in `run.sh`. CPU stages use the `open` account where possible.
+- Python environment `venv/` pinned in `env/requirements_frozen_2026-10-19.txt`; `venv_xd/` (adds pyreaddbc) for the SIM
+  `.dbc` files. R with tidyverse, sf, scales and patchwork; `scripts/phase4_scaling/Rprofile_cairo` sets the cairo device.
+- Paths. `run.sh`, `tasks.sbatch` and the scripts hard-code the project root
+  `/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast`. To run elsewhere, replace
+  that string (one `sed` command) or create the path as a symlink.
+
+## Data (not included)
+
+| Input | Path | Source |
+|---|---|---|
+| ACLED events | `data_raw/acled_full.csv` | acleddata.com (terms of use do not allow redistribution) |
+| UCDP GED v25.1 | `data_raw/ucdp/GEDEvent_v25_1.csv` | ucdp.uu.se |
+| PRIO-GRID statics | `data_raw/priogrid/static/*.json` | prio.org |
+| SIM death records | `data_raw/sim_brazil/dores/DOBR*.dbc` | DATASUS FTP, `scripts/crossdomain/fetch_sim_dores.sh` |
+| Municipality centroids | `data_raw/br_centroids/municipios.csv` | [verify source] |
+| CES cumulative | `data_raw/ces/cumulative_2006-2025.feather` | Kuriwaki, Harvard Dataverse doi:10.7910/DVN/II2DB6 |
+| Crime counts | `data_raw/crimecount/code_crime_core_all.parquet` | CODE (Crime Open Database) [verify] |
+| Dengue panel | `data_intermediate/dengue_panel_raw.csv.gz` | built from SINAN by R scripts not in this package [verify] |
+| Natural Earth 50 m countries | `data_raw/shapefiles/ne_50m_admin_0/ne_50m_admin_0_countries.zip` (md5 a33f3bf6...) | naturalearthdata.com |
+| Natural Earth 10 m, Ukraine view | `data_raw/shapefiles/ne_10m_admin_0_ukr/` | naturalearthdata.com |
+
+## Open items (from the v5 Codex review)
+
+- M2: stage checks do not yet cover every input when an upstream stage is not requested.
+- M3: dengue panel builder and the centroid, crime and dengue sources (marked [verify]).
+
+## Departures from how the reported results were first run (unchanged from v5)
+
+- Reported M encoder tasks 10-17 ran on A40 GPUs (same trainer and settings); stage 02 runs all 18 M tasks on A100.
+- The Ukraine 2022 window job runs on the free `open` partition.
+- The Brazil L column comes from the two earliest grid versions (`xd_grid_brazil.py`, `xd_grid_brazil_v2.py`), run exactly
+  as reported; `xd_grid_brazil_v6.py` produced every M and S Brazil result.
+- Unreported Brazil runs are not run, so `xd_placebo_boot_v3M.csv` gains `INCOMPLETE` rows for them; reported rows are unchanged.
+- `alert_counts_finetune_fullsrc_full.py`, the crime ingest and the Sudan cell chain run as wrapped CPU jobs.

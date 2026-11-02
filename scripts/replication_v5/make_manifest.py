@@ -1,4 +1,4 @@
-# make_manifest.py -- replication_v5 helper (author tool). Run on Roar from the project root:
+# make_manifest.py -- pipeline helper (author tool). Writes pipeline/manifest.csv. Run on Roar from the project root:
 #   venv/bin/python scripts/replication_v5/make_manifest.py . .
 """Compute the set of repo files the replication_v5 drivers need: drivers -> launchers -> scripts -> local imports/sources.
 Run: python3 closure.py <conflict_forecast root> <pkg root>   (pkg root holds replication_v5/ and scripts/replication_v5/)"""
@@ -10,9 +10,9 @@ def path_of(rel):
         if os.path.isfile(p):
             return p
     return None
-PAT = re.compile(r'((?:\$P|\$X|\$V|scripts|figures_tables)/[A-Za-z0-9_./${}-]+\.(?:py|R|sbatch|sh))')
+PAT = re.compile(r'((?:\$P|\$X|\$V|\$T|pipeline|scripts|figures_tables)/[A-Za-z0-9_./${}-]+\.(?:py|R|sbatch|sh))')
 SUB = {"$P": "scripts/phase4_scaling", "$X": "scripts/crossdomain", "$V": "scripts/replication_v5"}
-todo = ["replication_v5/" + f for f in sorted(os.listdir(os.path.join(PKG, "replication_v5"))) if f.endswith(".sh")]
+todo = ["pipeline/run.sh", "pipeline/tasks.sbatch"]
 seen, missing, why = {}, [], {}
 while todo:
     rel = todo.pop()
@@ -67,19 +67,18 @@ while todo:
         cand = os.path.join(d, mod + ".py")
         if path_of(cand): todo.append(cand); why.setdefault(cand, rel)
 for extra in ["scripts/phase4_scaling/Rprofile_cairo", "env/requirements_frozen_2026-10-19.txt", "env/versions_2026-10-19.txt",
-              "scripts/00_master.py", "scripts/phase4_scaling/launch_fullsrc_M_a40.sbatch",
-              "scripts/replication_v5/check_tables.py", "scripts/replication_v5/make_manifest.py", "replication_v5/README.md"]:
+              "scripts/00_master.py", "scripts/crossdomain/fetch_sim_dores.sh",
+              "scripts/replication_v5/check_tables.py", "scripts/replication_v5/make_manifest.py", "pipeline/README.md",
+              "pipeline/tests/parity_phase1.py"]:
     if path_of(extra):
-        seen[extra] = path_of(extra); why.setdefault(extra, "_common.sh/00_setup.sh")
+        seen[extra] = path_of(extra); why.setdefault(extra, "extra (config, provenance, tools)")
     else:
         missing.append(extra)
-w = csv.writer(open(os.path.join(PKG, "replication_v5", "manifest.csv"), "w", newline=""))
+w = csv.writer(open(os.path.join(PKG, "pipeline", "manifest.csv"), "w", newline=""))
 w.writerow(["path", "md5", "bytes", "role", "first_referenced_by"])
 for rel in sorted(seen):
     b = open(seen[rel], "rb").read()
-    role = ("driver" if rel.startswith("replication_v5/") else "new_v5" if rel.startswith("scripts/replication_v5/")
-            else "provenance" if rel.endswith("launch_fullsrc_M_a40.sbatch")
-            else "checked_copy" if rel in ("scripts/phase4_scaling/05_build_baseline_features.py", "scripts/phase4_scaling/build_sequences_super.py")
+    role = ("driver" if rel.startswith("pipeline/") else "new_v5" if rel.startswith("scripts/replication_v5/")
             else "config" if rel.startswith("env/") or rel.endswith("Rprofile_cairo")
             else "launcher" if rel.endswith((".sbatch", ".sh")) else "script")
     w.writerow([rel, hashlib.md5(b).hexdigest(), len(b), role, why.get(rel, "")])

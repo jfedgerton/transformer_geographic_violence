@@ -1,0 +1,79 @@
+path,md5,bytes,role,first_referenced_by
+env/requirements_frozen_2026-10-19.txt,b912b48924f93bf4c547c1a6b91574c6,1403,config,"extra (config, provenance, tools)"
+env/versions_2026-10-19.txt,9e2e62d309694b7a45150f6bed2ddbfc,94,config,"extra (config, provenance, tools)"
+figures_tables/fig_cell_alerts.R,21f619353af54abe813fa58abbf60e86,48841,script,pipeline/tasks.sbatch
+pipeline/README.md,a8b078ac95bd4e9e12bdc0dd0135bb73,7514,driver,"extra (config, provenance, tools)"
+pipeline/run.sh,15dc701bc20c4e4bf7b786286b972279,33307,driver,pipeline/run.sh
+pipeline/tasks.sbatch,725728611ecd757cb74c9ce0f154475b,19742,driver,pipeline/run.sh
+pipeline/tests/parity_phase1.py,416d39fd5500cd6f812279539f87de25,10795,driver,"extra (config, provenance, tools)"
+scripts/00_master.py,2d8f238269d02455c9d38a21a7a565bc,9761,script,pipeline/run.sh
+scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,scripts/rebuild_pipeline.sbatch (loop)
+scripts/01b_ingest_ucdp.py,f54f8f35dde03523eb736775be790227,10781,script,scripts/rebuild_pipeline.sbatch (loop)
+scripts/01c_merge_sources.py,79494b32fdf9be3312c3f47e9975c01b,5413,script,scripts/rebuild_pipeline.sbatch (loop)
+scripts/02_build_grid.py,58381c266df4c568aa0b865775f6423e,5862,script,scripts/rebuild_pipeline.sbatch (loop)
+scripts/03_aggregate_location_month.py,0709e8f53eabe51ed4954dea0377389e,7956,script,scripts/rebuild_pipeline.sbatch (loop)
+scripts/04_build_sequences.py,b41ab318907b1a9df08341ffd80f1f7c,13292,script,scripts/rebuild_pipeline.sbatch (loop)
+scripts/05_build_baseline_features.py,705bcf3c7046d50875f6e6f79bd950ea,16280,script,pipeline/tasks.sbatch
+scripts/build_pgm_fatalities_target.py,d61e4545cd4c53fa609fb7f718812594,1517,script,pipeline/run.sh
+scripts/build_priogrid_static.py,facec2e971add70b22de3d5fcff1b529,1834,script,pipeline/run.sh
+scripts/build_sequences_super.py,cf1ba8213c30ccfd3f52302a76a32cb8,9430,script,pipeline/tasks.sbatch
+scripts/crossdomain/build_brazil_panel.py,c297de242eb9c9929081838fc5b394a7,13041,script,pipeline/tasks.sbatch
+scripts/crossdomain/build_brazil_placebo_panel.py,f34043849651bf16e0463502d8a025ee,14084,script,pipeline/tasks.sbatch
+scripts/crossdomain/build_brazil_traffic_panel.py,ab00d170dbd744d0d8998989cf5826fb,13711,script,pipeline/tasks.sbatch
+scripts/crossdomain/fetch_sim_dores.sh,c501d82609b341f311ebeb1ed5824796,1041,launcher,pipeline/run.sh
+scripts/crossdomain/prep_sim_homicide.py,70224ba9130fb3a82fa9583e4ec94913,3567,script,pipeline/tasks.sbatch
+scripts/crossdomain/prep_sim_placebos_v2.py,d9b7cf57ac325ca7f3b29255bfaa5094,4018,script,pipeline/tasks.sbatch
+scripts/crossdomain/prep_sim_traffic.py,1379a9483fd9c861853a33465f4b788e,4027,script,pipeline/tasks.sbatch
+scripts/crossdomain/xd_grid_brazil.py,4f412c3c2991f0412148fbe0855ed44f,22751,script,pipeline/tasks.sbatch
+scripts/crossdomain/xd_grid_brazil_v2.py,357895448f9b4ef6e510a8d924283eee,30112,script,pipeline/tasks.sbatch
+scripts/crossdomain/xd_grid_brazil_v6.py,21f0cb88f622393fc351559486eab8af,33593,script,pipeline/tasks.sbatch
+scripts/crossdomain/xd_m_boot.py,07df44fce4e5e49f8e6b4a595173d67b,6736,script,pipeline/tasks.sbatch
+scripts/crossdomain/xd_placebo_boot_v3M.py,f590f8aae3b67ba5bdae71fd454c1f21,7482,script,pipeline/tasks.sbatch
+scripts/crossdomain/xd_profile_causes.py,1a86c44c24061a6f815d215341c37e5d,3964,script,pipeline/tasks.sbatch
+scripts/crossdomain/xd_s_boot.py,00417428b7f9ba7cab97d06f78206685,6723,script,pipeline/tasks.sbatch
+scripts/domain_tp_fp_f0025.py,448a6f90aab56cdf363f5a0605d6d537,1641,script,pipeline/run.sh
+scripts/phase4_scaling/Rprofile_cairo,c1dad229865d6fddba53835e635a0545,30,config,"extra (config, provenance, tools)"
+scripts/phase4_scaling/alert_budget_sweep_fullsrc.py,ef232a00c42a513d9079b0dd7d8b4d94,6667,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/alert_counts_finetune_fullsrc_full.py,e9ff320471579bcbf274de74b2f8be03,6665,script,pipeline/run.sh
+scripts/phase4_scaling/alert_counts_fullsrc.py,58d107777fc2388eb1af0c7d159cf441,10078,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/alert_profile_fullsrc.py,cf7ff17b562486788e7bf561ba578e25,15568,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/audit_cell_country.R,da1e0a0819952c41c1c901485a582dea,1683,script,pipeline/run.sh
+scripts/phase4_scaling/audit_cells_export.py,cc31c55c54abcfd7d2a84e17699286f8,769,script,pipeline/run.sh
+scripts/phase4_scaling/bootstrap_ci_fullsrc.py,c33e42a2091cf21f206486e8c0202ad4,12796,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/bootstrap_ft_fullsrc.py,6bdb15ca0e6e95bd9a5d5ada285957fc,10373,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/build_seen_tokens_fullsrc.py,886b2703ba37df7b1e5a6258d70373ca,6621,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/cell_alerts_agg_fullsrc.py,b222a9d387b5ace6fa5ea01336f2b818,6397,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/cell_alerts_persistence_fullsrc.py,5ef96397d6c2355cbc5bdae3614a5088,6450,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/cell_month_decompose_fullsrc.py,be865e748fd81b34e026991a5b63209e,9375,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/country_alert_rates.R,b941e09cecdc042aac8015a8a0f0d499,1680,script,pipeline/run.sh
+scripts/phase4_scaling/country_slice_fullsrc.py,3b7329622fc8604620f7ae942aef7274,9609,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/country_window_fullsrc.py,6712e8666760bb30add5a6c90354119a,13059,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/crime_ingest.py,f271b022931ea9124925dfd8ed348db0,4819,script,pipeline/run.sh
+scripts/phase4_scaling/dengue_ingest.py,09c5561d62401dc35dd7bcb06ef0cc8f,3746,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/export_ukraine_map_fullsrc.py,24d05b594c5a09c171ea077cb73c8781,8664,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/fig_finetune_gains.R,46cc7423da6daaff0eee6aa4330576df,5215,script,pipeline/run.sh
+scripts/phase4_scaling/fig_loro_gains_v2.R,1e16acb92eb619ceb355332d26371338,3499,script,pipeline/run.sh
+scripts/phase4_scaling/fig_placebo_gradient.R,cc2b782c158734090e86ea2b9e1c2d2a,4095,script,pipeline/run.sh
+scripts/phase4_scaling/fig_placebo_gradient_a_only_nolabel.R,b5d6373c5be30ce2350112bb57d6091d,4703,script,pipeline/run.sh
+scripts/phase4_scaling/fig_ukraine_map.R,130b68d1e17afb539919c4fd277ad57e,4514,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/persistence_month_t_fullsrc.py,cbd3454533847397e5418a98c38b4781,7300,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/prep_ces.py,f3dedd11850bf606ca37b55c47c329fa,6114,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/pretrain_ces.py,18a19e38ef2cd60c70896d3152582e69,6824,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/pretrain_domain.py,4a8411a4e80234cd7a06be2e73bd20d5,8191,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/regions.py,3482854684a2050665ccc4803dc9a5f1,4565,script,scripts/phase4_scaling/share_grid_fullsrc.py
+scripts/phase4_scaling/share_grid_ces.py,cb7c595a5d7d17b84565d99ded030c04,16532,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/share_grid_domain.py,7a46cce7e207af59325451aa13c6af30,14783,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/share_grid_fullsrc.py,828f0cb9df029dfb433683816b265488,29776,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/sudan_cells_fix.py,3cde2b1aad26d8a157c5a6a01f32cba2,1514,script,pipeline/run.sh
+scripts/phase4_scaling/train_repr_obj.py,c54e27c61ae10ba25a9c3535a6e8930b,21934,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/transfer_eval_region_fullpreds.py,e89ca1620d781574673b54afdc68e334,19004,script,pipeline/tasks.sbatch
+scripts/phase4_scaling/vocab_remap.py,2556fc91c8136555753642290e9847ce,4157,script,pipeline/tasks.sbatch
+scripts/replication_v5/check_tables.py,9733de6f5786e3729bc1885e378d1b6e,4989,new_v5,"extra (config, provenance, tools)"
+scripts/replication_v5/fig_cell_maps.R,54e96ee6d4cf4104c815742231cd0858,15163,new_v5,pipeline/run.sh
+scripts/replication_v5/fig_persistence_gap.R,ae8237099e37f43442c2de694dca02e5,4191,new_v5,pipeline/run.sh
+scripts/replication_v5/fig_random_encoder.R,2cac05ab912b0f8c1d290a6afea34e82,6468,new_v5,pipeline/run.sh
+scripts/replication_v5/fig_share_curve.R,09b6bdd1f028e69e62fe4dbc617fcf3d,4205,new_v5,pipeline/run.sh
+scripts/replication_v5/fig_share_regions.R,c570eb04aa21f80b071a67deae52479e,4815,new_v5,pipeline/run.sh
+scripts/replication_v5/fig_ukraine_alert_gain_arm.R,676adf1948d0d64a9d4c0d88aa57112d,8737,new_v5,pipeline/run.sh
+scripts/replication_v5/make_manifest.py,ecdd06eaef56706c9b62a53c865e7892,4706,new_v5,"extra (config, provenance, tools)"
+scripts/replication_v5/make_tables.py,25cb0eff54365381b04bd605c5e89051,48297,new_v5,pipeline/run.sh
