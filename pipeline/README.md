@@ -76,8 +76,10 @@ Seeds: encoders 123, 456, 789; XGBoost, training-share draws and bootstraps use 
   - bodies: all 77 submissions including the wrapped CPU jobs, every array index, with the full environment logged at
     every python/Rscript call plus every `module` and `activate` call; repeated with `module` failing and with every
     analysis call failing. 1,726 runs; no difference except the pinned `set -e` stops above;
+  - rules: `tasks.sbatch` must contain no `#SBATCH` line (resources live in `run.sh`), and every submission must use
+    sbatch's default environment export (ALL), the only mode the test models;
   - self-test: a duplicate tables submission, an exported `CRIME_TARGET`, a global `module load`, a changed learning
-    rate and a changed memory request are each caught.
+    rate, a changed memory request, a `#SBATCH` line in `tasks.sbatch` and an `--export=NONE` submission are each caught.
   - not covered: stage 00 (run by every DRY run), login-shell profiles, the analysis scripts themselves (unchanged).
 
 ## Requirements

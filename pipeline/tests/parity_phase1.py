@@ -26,7 +26,7 @@ Checks (exit 0 only if all pass):
      last array index with (a) `module` failing and (b) every python/Rscript call failing.
  (4) self-test: the same checks are rerun on deliberately broken copies of the new pipeline and must FAIL for each:
      a duplicate tables submission, an exported CRIME_TARGET, a global `module load anaconda` (affects the Brazil jobs),
-     a changed learning rate, a changed memory request.
+     a changed learning rate, a changed memory request, a #SBATCH line in tasks.sbatch, an --export=NONE submission.
 Accepted difference (pinned, see SETE_ADDED): 11 jobs whose old launchers had no `set -e` now stop when `module load`
 fails instead of carrying on. Known limits: login-shell profile files are not simulated (the wrapped jobs' `bash -lc` is run as `bash -c` on both sides);
 analysis scripts are not executed (they are unchanged byte for byte, see pipeline/manifest.csv)."""
@@ -200,9 +200,13 @@ def plan(src, rootvar):
         o, pos = parse_opts(r["argv"])
         script = pos[-1] if pos else None
         wrap = o.pop("--wrap", None)
-        eff = header(os.path.join(R, script)) if script and not script.endswith("pipeline/tasks.sbatch") else {}
+        eff = header(os.path.join(R, script)) if script else {}   # every job script's #SBATCH lines, tasks.sbatch included
         eff.update(o); eff.pop("--parsable", None)
         exp = eff.pop("--export", "")
+        # export mode (first comma field). sbatch's default is ALL. The body environment below is built as ALL
+        # (submission environment + explicit assignments, explicit wins), so any other mode is compared AND rejected.
+        mode = exp.split(",")[0] if exp else ""
+        eff["--export(mode)"] = "ALL" if mode in ("", "ALL") else mode
         exports = dict(kv.split("=", 1) for kv in exp.split(",")[1:]) if exp else {}
         env = {k: v for k, v in r["env"].items() if k not in EXCLUDE_ENV}
         out.append(dict(id=str(5000001 + i), opts=eff, exports=exports, script=script, wrap=wrap, env=env, cwd=r["cwd"],
@@ -225,6 +229,13 @@ def compare_plans(Orows, Nrows):
         if len(set(names)) != len(names): fails.append((side, "duplicate job names", [n for n, c in collections.Counter(names).items() if c > 1]))
         if len(set(ids)) != len(ids): fails.append((side, "duplicate job ids"))
     if len(Orows) != len(Nrows): fails.append(("submission count", len(Orows), len(Nrows)))
+    for side, rows in (("old", Orows), ("new", Nrows)):
+        for r in rows:
+            if r["opts"].get("--export(mode)") != "ALL":
+                fails.append((side, r["name"], "unsupported --export mode (test models ALL only)", r["opts"].get("--export(mode)")))
+    # resources belong in run.sh: the single job script must carry no #SBATCH directive (Slurm would apply it)
+    sb = [l.rstrip() for l in open(os.path.join(R, "pipeline/tasks.sbatch")) if l.startswith("#SBATCH")]
+    if sb: fails.append(("pipeline/tasks.sbatch contains #SBATCH directives", sb))
     O = {r["name"]: r for r in Orows}; N = {r["name"]: r for r in Nrows}
     for T in (O, N):
         i2n = {r["id"]: n for n, r in T.items()}
@@ -340,6 +351,8 @@ MUTATIONS = [  # (name, file, old text, new text, bodies to run)
     ("global module load", "pipeline/tasks.sbatch", "cd $ROOT\n", "cd $ROOT\nmodule load anaconda\n", ["br_sim_hom"]),
     ("changed learning rate", "pipeline/tasks.sbatch", "L) LR=3e-4", "L) LR=3e-3", ["pretrain_L"]),
     ("changed memory request", "pipeline/run.sh", "--mem=64G --time=06:00:00", "--mem=32G --time=06:00:00", []),
+    ("#SBATCH directive in tasks.sbatch", "pipeline/tasks.sbatch", "#!/bin/bash\n", "#!/bin/bash\n#SBATCH --constraint=__selftest__\n", ["br_sim_hom"]),
+    ("export mode NONE", "pipeline/run.sh", "D_PRIO=$(submit data_prio --account=open", "D_PRIO=$(submit data_prio --export=NONE --account=open", ["data_prio"]),
 ]
 
 ok = False
