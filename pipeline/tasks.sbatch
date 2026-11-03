@@ -270,23 +270,23 @@ br_sim_hom)         # was crossdomain/launch_prep_sim.sbatch (prep_sim.py was pr
   XD_CAUSE=homicide venv_xd/bin/python $X/prep_sim.py
   echo SIMPREP_DONE ;;
 
-br_panel_hom)       # was crossdomain/launch_brazil_panel.sbatch
-  md5sum $X/build_brazil_panel.py
-  venv/bin/python $X/build_brazil_panel.py
+br_panel_hom)       # was crossdomain/launch_brazil_panel.sbatch (brazil_panel.py was build_brazil_panel.py)
+  md5sum $X/brazil_panel.py
+  XD_CAUSE=homicide venv/bin/python $X/brazil_panel.py
   echo BRPANEL_DONE ;;
 
-br_traffic)         # was crossdomain/launch_sim_traffic.sbatch (prep_sim.py was prep_sim_traffic.py)
-  md5sum $X/prep_sim.py $X/build_brazil_traffic_panel.py
+br_traffic)         # was crossdomain/launch_sim_traffic.sbatch (was prep_sim_traffic.py, build_brazil_traffic_panel.py)
+  md5sum $X/prep_sim.py $X/brazil_panel.py
   XD_CAUSE=traffic venv_xd/bin/python $X/prep_sim.py
   echo TRAFPREP_DONE
-  venv/bin/python $X/build_brazil_traffic_panel.py
+  XD_CAUSE=traffic venv/bin/python $X/brazil_panel.py
   echo TRAFPANEL_DONE ;;
 
-br_placebos)        # was crossdomain/launch_xd_placebos_prep_v2.sbatch (prep_sim.py was prep_sim_placebos_v2.py)
-  md5sum $X/prep_sim.py $X/build_brazil_placebo_panel.py $X/xd_profile_causes.py
+br_placebos)        # was crossdomain/launch_xd_placebos_prep_v2.sbatch (was prep_sim_placebos_v2.py, build_brazil_placebo_panel.py)
+  md5sum $X/prep_sim.py $X/brazil_panel.py $X/xd_profile_causes.py
   XD_CAUSE=placebos venv_xd/bin/python $X/prep_sim.py
   echo PLPREP_DONE
-  for c in suicide drowning dengue; do XD_PLACEBO=$c venv/bin/python $X/build_brazil_placebo_panel.py; echo "PANEL_DONE $c"; done
+  for c in suicide drowning dengue; do XD_CAUSE=$c venv/bin/python $X/brazil_panel.py; echo "PANEL_DONE $c"; done
   venv/bin/python $X/xd_profile_causes.py ;;
 
 xd_head)            # was crossdomain/launch_xd_m.sbatch (XD_CAP=M) and launch_xd_s.sbatch (XD_CAP=S): tasks 0-2 fine-tune 1%, 3-5 nested

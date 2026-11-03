@@ -11,7 +11,7 @@ relative paths, outputs are written only there. Nothing in the project tree is w
 inputs, so run it on Roar, e.g.
   sbatch --account=open --mem=16G --time=01:00:00 -o logs/parity_p2_%j.out \\
          --wrap "cd <root> && module load anaconda && module load r && venv/bin/python pipeline/tests/parity_phase2.py figures"
-Cases: xd_boot, sudan, figures, sim_prep; a single run is selected with case:label (e.g. sim_prep:traffic).  Exit 0 only if every case run is PARITY2_OK."""
+Cases: xd_boot, sudan, figures, sim_prep, panel; a single run is selected with case:label (e.g. sim_prep:traffic).  Exit 0 only if every case run is PARITY2_OK."""
 import os, re, sys, glob, shutil, hashlib, subprocess, tempfile, difflib
 
 ROOT = "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast"
@@ -83,6 +83,18 @@ CASES = {
              old=[[PYXD, f"{{OLD}}/{X}/prep_sim_placebos_v2.py"]], new=[[PYXD, f"{{NEW}}/{X}/prep_sim.py"]], env_new={"XD_CAUSE": "placebos"},
              outputs=[f"data_intermediate/sim_{c}_events.parquet" for c in ("suicide", "drowning", "dengue")]
                      + ["outputs/crossdomain/sim_placebos_year_audit_v2.csv"], published=".", stdout=True)
+    ],
+    "panel": [
+        dict(label=c, mode="outdir", inputs=[], mkdirs=[],
+             old=[[PY, f"{{OLD}}/{X}/{old}"]], new=[[PY, f"{{NEW}}/{X}/brazil_panel.py"]], env_new={"XD_CAUSE": c},
+             outputs=[f"data_intermediate/{stem}_panel.parquet", f"outputs/crossdomain/{stem}_audit.json"], published=".", stdout=True)
+        for c, old, stem in (("homicide", "build_brazil_panel.py", "xd_brazil"), ("traffic", "build_brazil_traffic_panel.py", "xd_brazil_traffic"))
+    ] + [
+        dict(label=c, mode="outdir", inputs=[], mkdirs=[],
+             old=[[PY, f"{{OLD}}/{X}/build_brazil_placebo_panel.py"]], env_old={"XD_PLACEBO": c},
+             new=[[PY, f"{{NEW}}/{X}/brazil_panel.py"]], env_new={"XD_CAUSE": c},
+             outputs=[f"data_intermediate/xd_brazil_{c}_panel.parquet", f"outputs/crossdomain/xd_brazil_{c}_audit.json"], published=".", stdout=True)
+        for c in ("suicide", "drowning", "dengue")
     ],
 }
 ENV_R = {"R_PROFILE_USER": f"{ROOT}/{P}/Rprofile_cairo"}   # as the old wrapped CPU jobs set it

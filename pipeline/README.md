@@ -97,6 +97,7 @@ to be present.
 | `scripts/phase4_scaling/sudan_cells.py` | `audit_cells_export.py`, `audit_cell_country.R` (embedded verbatim, run with `Rscript`), `sudan_cells_fix.py` | none (runs all three steps) | job 56961249: 4 outputs and stdout byte-identical; outputs equal the published files |
 | `scripts/replication_v5/figures.R` | `fig_loro_gains_v2.R`, `fig_cell_maps.R`, `fig_finetune_gains.R`, `fig_placebo_gradient_a_only_nolabel.R`, `fig_random_encoder.R`, `fig_share_curve.R`, `fig_placebo_gradient.R`, `fig_share_regions.R`, `fig_persistence_gap.R` | optional 3rd argument: figure ids (default all nine) | job 56961250: all 19 figure files identical |
 | `scripts/crossdomain/prep_sim.py` | `prep_sim_homicide.py`, `prep_sim_traffic.py`, `prep_sim_placebos_v2.py` | `XD_CAUSE=homicide` / `traffic` / `placebos` | jobs 56962173 / 56962174 / 56962175: all 8 outputs and stdout identical; events and audits equal the published files except the placebo audit (published audit is from the dengue-only v2 rerun) |
+| `scripts/crossdomain/brazil_panel.py` | `build_brazil_panel.py`, `build_brazil_traffic_panel.py`, `build_brazil_placebo_panel.py` | `XD_CAUSE=homicide` / `traffic` / `suicide` / `drowning` / `dengue` (was `XD_PLACEBO`) | job 56962176: all 10 outputs (5 panels + audits) and stdout identical; all equal the published files |
 
 Sudan: `country_slice_fullsrc.py` and `country_window_fullsrc.py` (unchanged analysis scripts) still name the old
 Sudan scripts in a comment; the file they read, `outputs/sudan_cells_keep.csv`, is unchanged.

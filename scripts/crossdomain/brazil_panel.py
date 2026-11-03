@@ -1,10 +1,15 @@
-"""build_brazil_traffic_panel.py (2026-10-24) -- PLACEBO copy of build_brazil_panel.py (md5 c297de24). Only changes:
-input sim_traffic_events.parquet, outputs xd_brazil_traffic_panel.parquet / xd_brazil_traffic_audit.json, and the
-homicide sanity asserts replaced by placebo asserts (no police, firearm or gang-pattern deaths). Token construction is
-IDENTICAL: every traffic death is coded exactly like a homicide (same event type, actors, bins), so the panel differs
-from the homicide panel only in which deaths it counts.
+"""brazil_panel.py (consolidated 2026-11-03) -- one script for the five Brazil SIM panels. XD_CAUSE selects the panel:
+  homicide  was build_brazil_panel.py (md5 c297de24); input sim_homicide_events.parquet, outputs xd_brazil_panel.parquet /
+            xd_brazil_audit.json, homicide sanity asserts
+  traffic   was build_brazil_traffic_panel.py (placebo); input sim_traffic_events.parquet, outputs
+            xd_brazil_traffic_panel.parquet / xd_brazil_traffic_audit.json, placebo asserts (no police, firearm or
+            gang-pattern deaths; transport causes only)
+  suicide | drowning | dengue
+            was build_brazil_placebo_panel.py with XD_PLACEBO=<cause>; input sim_<cause>_events.parquet, outputs
+            xd_brazil_<cause>_panel.parquet / xd_brazil_<cause>_audit.json, placebo asserts (no police, firearm or
+            gang-pattern deaths; causes inside the cause's ICD-10 range)
+Token construction is identical for all five. Original docstring of build_brazil_panel.py follows.
 
-Original docstring follows.
 build_brazil_panel.py (2026-10-23) -- cross-domain test C3: Brazil SIM homicides -> PRIO-GRID cell-month panel
 in the conflict encoder's own input format (scripts/phase4_scaling/build_sequences_super.py).
 
@@ -35,12 +40,30 @@ import numpy as np, pandas as pd
 
 R = "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast"
 TEST = os.environ.get("XD_TEST", "0") == "1"
-EVENTS = os.environ.get("XD_EVENTS", f"{R}/data_intermediate/sim_traffic_events.parquet")
+CAUSE = os.environ.get("XD_CAUSE", "")
+assert CAUSE in ("homicide", "traffic", "suicide", "drowning", "dengue"), \
+    f"set XD_CAUSE=homicide, traffic, suicide, drowning or dengue (got '{CAUSE}')"
+IN_CAUSE = {"suicide": lambda c: "X60" <= c <= "X84", "drowning": lambda c: "W65" <= c <= "W74",
+            "dengue": lambda c: c in ("A90", "A91", "A97")}      # A97 = dengue in the 2014+ ICD-10 update
+PLACEBO = CAUSE if CAUSE in IN_CAUSE else ""
+if CAUSE == "homicide":
+    EVENTS = os.environ.get("XD_EVENTS", f"{R}/data_intermediate/sim_homicide_events.parquet")
+elif CAUSE == "traffic":
+    EVENTS = os.environ.get("XD_EVENTS", f"{R}/data_intermediate/sim_traffic_events.parquet")
+else:
+    EVENTS = os.environ.get("XD_EVENTS", f"{R}/data_intermediate/sim_{PLACEBO}_events.parquet")
 CENTROIDS = os.environ.get("XD_CENTROIDS", f"{R}/data_raw/br_centroids/municipios.csv")
 VOCAB = os.environ.get("XD_VOCAB", f"{R}/data_intermediate/vocab_super.json")
 OUTDIR = os.environ.get("XD_OUTDIR", R)
-OUT = f"{OUTDIR}/data_intermediate/xd_brazil_traffic_panel.parquet"
-AUD = f"{OUTDIR}/outputs/crossdomain/xd_brazil_traffic_audit.json"
+if CAUSE == "homicide":
+    OUT = f"{OUTDIR}/data_intermediate/xd_brazil_panel.parquet"
+    AUD = f"{OUTDIR}/outputs/crossdomain/xd_brazil_audit.json"
+elif CAUSE == "traffic":
+    OUT = f"{OUTDIR}/data_intermediate/xd_brazil_traffic_panel.parquet"
+    AUD = f"{OUTDIR}/outputs/crossdomain/xd_brazil_traffic_audit.json"
+else:
+    OUT = f"{OUTDIR}/data_intermediate/xd_brazil_{PLACEBO}_panel.parquet"
+    AUD = f"{OUTDIR}/outputs/crossdomain/xd_brazil_{PLACEBO}_audit.json"
 PANEL_START, PANEL_END = "2000-01", "2024-12"
 TRAIN_MEAN_START, TRAIN_MEAN_END = "2001-01", "2020-12"
 H, CAP_PER_MONTH, SURGE_FLOOR, SEED = 12, 16, 1.0, 123
@@ -130,10 +153,17 @@ ev = ev.assign(et=et, se=se, a1_min=a1_min, a1_rich=a1_rich, a2=a2, a1t=a1t, a2t
 audit["events_kept"] = int(len(ev))
 audit["share_police"] = float(police.mean()); audit["share_firearm"] = float(firearm.mean())
 audit["share_gang_pattern"] = float(gang_pattern.mean())
-if not TEST:
+if not TEST and CAUSE == "homicide":
+    assert 0.05 < audit["share_gang_pattern"] < 0.8, f"gang-pattern share {audit['share_gang_pattern']:.3f}: SEXO/IDADE parsing failed?"
+    assert audit["share_police"] > 0, "no police (Y35) deaths"
+if not TEST and CAUSE == "traffic":
     assert audit["share_gang_pattern"] == 0 and audit["share_police"] == 0 and audit["share_firearm"] == 0, \
         "placebo panel contains police / firearm / gang-pattern deaths: wrong input file?"
     assert ev["cause3"].astype(str).str[0].eq("V").all(), "placebo panel contains non-transport causes"
+if not TEST and CAUSE in IN_CAUSE:
+    assert audit["share_gang_pattern"] == 0 and audit["share_police"] == 0 and audit["share_firearm"] == 0, \
+        "placebo panel contains police / firearm / gang-pattern deaths: wrong input file?"
+    assert ev["cause3"].astype(str).map(IN_CAUSE[PLACEBO]).all(), f"placebo panel contains causes outside {PLACEBO}"
 
 # ---- balanced panel over the fixed cell set ----
 months = pd.period_range(PANEL_START, PANEL_END, freq="M").astype(str)
