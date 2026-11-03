@@ -6,7 +6,7 @@
 set -eo pipefail
 ROOT=/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast
 cd $ROOT
-module load anaconda
+# module load anaconda happens inside each branch whose original launcher did it (the Brazil launchers did not)
 P=scripts/phase4_scaling; X=scripts/crossdomain
 RGS=(africa mena europe americas south_asia asia_pacific); SDS=(123 456 789)
 SHS=(0.0025 0.005 0.0075 0.01 0.025 0.05 0.10)
@@ -18,6 +18,7 @@ case "$TASK" in
 
 # ================= stage 01: panel =================
 rebuild)            # was rebuild_pipeline.sbatch (in scripts/): ACLED + UCDP ingest .. 05 base features
+  module load anaconda
   source venv/bin/activate
   export PHASE_MODE=global
   for s in 01_ingest_acled 01b_ingest_ucdp 01c_merge_sources 02_build_grid 03_aggregate_location_month 04_build_sequences 05_build_baseline_features; do
@@ -28,6 +29,7 @@ rebuild)            # was rebuild_pipeline.sbatch (in scripts/): ACLED + UCDP in
   echo ALL_BUILD_DONE ;;
 
 featbuild)          # was phase4_scaling/launch_featbuild.sbatch: 9-field sequences + vocab_super, then 05 with suffix _super
+  module load anaconda
   source venv/bin/activate
   echo "=== $(date) build_sequences_super ==="
   python scripts/build_sequences_super.py
@@ -36,12 +38,14 @@ featbuild)          # was phase4_scaling/launch_featbuild.sbatch: 9-field sequen
   echo SUPERBUILD_DONE ;;
 
 seen_tokens)        # was launch_seen_tokens_fullsrc.sbatch
+  module load anaconda
   source venv/bin/activate
   md5sum $P/build_seen_tokens_fullsrc.py
   python $P/build_seen_tokens_fullsrc.py ;;
 
 # ================= stage 02: pretraining =================
 pretrain)           # was launch_fullsrc_{S,M,L}.sbatch (identical except size and the locked per-size LR)
+  module load anaconda
   source venv/bin/activate
   : "${SIZE:?set SIZE}"
   case "$SIZE" in S) LR=1e-3 ;; M) LR=5e-4 ;; L) LR=3e-4 ;; *) echo "SIZE must be S, M or L"; exit 1 ;; esac
@@ -58,6 +62,7 @@ pretrain)           # was launch_fullsrc_{S,M,L}.sbatch (identical except size a
 
 # ================= stage 03: frozen evaluation =================
 eval|eval_rand)     # was launch_fullsrc_eval.sbatch (eval) and launch_fullsrc_eval_rand.sbatch (eval_rand)
+  module load anaconda
   source venv/bin/activate
   : "${SIZE:?set SIZE}"
   case "$SIZE" in S|M|L|XL) ;; *) echo "bad SIZE=$SIZE"; exit 1;; esac
@@ -80,11 +85,13 @@ eval|eval_rand)     # was launch_fullsrc_eval.sbatch (eval) and launch_fullsrc_e
   if [ $RND = 0 ]; then echo FSEVAL_DONE_${EVAL_TAG}; else echo FSRAND_DONE_${EVAL_TAG}; fi ;;
 
 persistence_t)      # was launch_persistence_t_fullsrc.sbatch
+  module load anaconda
   md5sum $P/persistence_month_t_fullsrc.py
   venv/bin/python $P/persistence_month_t_fullsrc.py ;;
 
 # ================= stage 04: low-data grids =================
 grid)               # was launch_grid_fullsrc.sbatch
+  module load anaconda
   source venv/bin/activate
   export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
   : "${GRID_SIZE:?pass GRID_SIZE}"; : "${VOCAB_REMAP:?pass VOCAB_REMAP=1}"
@@ -105,6 +112,7 @@ grid)               # was launch_grid_fullsrc.sbatch
 
 # ================= stage 05: bootstraps =================
 boot_ci)            # was launch_bootstrap_ci_fullsrc.sbatch: persistence + nested, 5-replicate smoke then cell and block5
+  module load anaconda
   : "${BOOT_SIZE:?set BOOT_SIZE}"; export BOOT_COMPS=persistence,nested
   md5sum $P/bootstrap_ci_fullsrc.py
   BOOT_B=5 BOOT_UNIT=cell BOOT_OUTSFX=_smoke venv/bin/python $P/bootstrap_ci_fullsrc.py
@@ -113,6 +121,7 @@ boot_ci)            # was launch_bootstrap_ci_fullsrc.sbatch: persistence + nest
   echo BOOTFS_DONE_${BOOT_SIZE} ;;
 
 boot_rand|boot_shares)  # were launch_bootstrap_rand_fullsrc.sbatch and launch_bootstrap_shares_fullsrc.sbatch
+  module load anaconda
   : "${BOOT_SIZE:?set BOOT_SIZE}"
   if [ "$TASK" = boot_rand ]; then export BOOT_COMPS=random; SFX=_rand
   else export BOOT_COMPS=share_0.0025,share_0.005,share_0.0075,share_0.01,share_0.025,share_0.05,share_0.1; SFX=_shares; fi
@@ -122,6 +131,7 @@ boot_rand|boot_shares)  # were launch_bootstrap_rand_fullsrc.sbatch and launch_b
   if [ "$TASK" = boot_rand ]; then echo BOOTRAND_DONE_${BOOT_SIZE}; else echo BOOTSH_DONE_${BOOT_SIZE}; fi ;;
 
 boot_ft)            # was launch_bootstrap_ft_fullsrc.sbatch
+  module load anaconda
   : "${BOOT_SIZE:?set BOOT_SIZE}"; : "${BOOT_FT:?set BOOT_FT}"
   md5sum $P/bootstrap_ft_fullsrc.py
   BOOT_B=1000 BOOT_UNIT=block5 venv/bin/python $P/bootstrap_ft_fullsrc.py
@@ -130,6 +140,7 @@ boot_ft)            # was launch_bootstrap_ft_fullsrc.sbatch
 
 # ================= stage 06: alerts =================
 alert_chain)        # was launch_alert_chain_fullsrc.sbatch: six scripts in order (a step whose marker exists is skipped), then Fig 19
+  module load anaconda
   : "${SIZE:?set SIZE=S|M|L}"
   case "$SIZE" in S|M|L) ;; *) echo "SIZE must be S, M or L"; exit 1;; esac
   export SIZE OUTSFX=${OUTSFX:-}
@@ -162,6 +173,7 @@ alert_chain)        # was launch_alert_chain_fullsrc.sbatch: six scripts in orde
 
 # ================= stage 07: Ukraine, CES, crime, dengue =================
 country_slice)      # was launch_country_slice_fullsrc.sbatch
+  module load anaconda
   : "${SIZE:?set SIZE=S|M|L}"; : "${SLICE_TARGET:?pass SLICE_TARGET=incidence or civilian}"
   export SIZE SLICE_TARGET SLICE_FT=${SLICE_FT:-top2} OUTSFX=${OUTSFX:-}
   unset SLICE_ROOT SLICE_ALLOW_MISSING
@@ -172,6 +184,7 @@ country_slice)      # was launch_country_slice_fullsrc.sbatch
   echo SLICEFS_DONE_${SIZE}_${SLICE_TARGET}${OUTSFX} ;;
 
 country_window)     # was launch_country_window_fullsrc.sbatch
+  module load anaconda
   : "${SIZE:?set SIZE=S|M|L}"; : "${WIN_TARGET:?pass WIN_TARGET=incidence or civilian}"
   export SIZE WIN_TARGET WIN_FT=${WIN_FT:-top2} OUTSFX=${OUTSFX:-}
   unset WIN_ROOT
@@ -182,6 +195,7 @@ country_window)     # was launch_country_window_fullsrc.sbatch
   echo WINDOWFS_DONE_${SIZE}_${WIN_TARGET}${OUTSFX} ;;
 
 ukraine_map)        # was launch_ukraine_map_fullsrc.sbatch: cell export at one share, then the four period maps
+  module load anaconda
   source venv/bin/activate
   module load r 2>/dev/null || true
   command -v Rscript >/dev/null || { echo "Rscript not found (load the R module that has ggplot2 and sf)"; exit 1; }
@@ -196,16 +210,19 @@ ukraine_map)        # was launch_ukraine_map_fullsrc.sbatch: cell export at one 
   echo UKRMAPFS_DONE_${SIZE}${OSFX} share=$CHOSEN ;;
 
 ces_prep)           # was launch_ces_prep.sbatch
+  module load anaconda
   source venv/bin/activate
   python $P/prep_ces.py ;;
 
 ces_pretrain)       # was launch_ces_pretrain.sbatch: 9 held-out Census divisions x 3 seeds
+  module load anaconda
   source venv/bin/activate
   export DIV=$((i % 9)) SEED=${SDS[$((i / 9))]} SMOKE=0 EPOCHS=30 PATIENCE=5
   echo "[task] $i DIV=$DIV SEED=$SEED"
   python $P/pretrain_ces.py ;;
 
 ces_grid)           # was launch_ces_grid.sbatch
+  module load anaconda
   source venv/bin/activate
   export SMOKE=${SMOKE_OVERRIDE:-0} GRID_DRAWS=0,1,2,3,4 GRID_LRS=3e-5,1e-4,3e-4,1e-3 GRID_WDS=0,0.01 GRID_MAX_EP=50 GRID_PATIENCE=5
   export GRID_SWEEP=${GRID_SWEEP:-draw0}
@@ -220,10 +237,12 @@ ces_grid)           # was launch_ces_grid.sbatch
   python $P/share_grid_ces.py ;;
 
 dengue_ingest)      # was run_dengue_ingest.sbatch (in scripts/)
+  module load anaconda
   source venv/bin/activate
   python $P/dengue_ingest.py ;;
 
 domain_pretrain)    # was launch_domain_pretrain_seeds.sbatch: crime x 3 seeds (tasks 0-2), dengue 5 macro-regions x 3 seeds (3-17)
+  module load anaconda
   source venv/bin/activate
   if [ $i -lt 3 ]; then export DOMAIN=crime SEED=${SDS[$i]}; OUTF=data_model/repr_model_L_contrastive_crime_dom_s${SEED}.pt
   else j=$((i - 3)); export DOMAIN=dengue REGION=$((j % 5)) SEED=${SDS[$((j / 5))]}
@@ -233,6 +252,7 @@ domain_pretrain)    # was launch_domain_pretrain_seeds.sbatch: crime x 3 seeds (
   python $P/pretrain_domain.py ;;
 
 domain_grid)        # was launch_grid_domain.sbatch
+  module load anaconda
   source venv/bin/activate
   export SMOKE=${SMOKE_OVERRIDE:-0} GRID_DRAWS=0,1,2,3,4 GRID_LRS=3e-5,1e-4,3e-4,1e-3 GRID_WDS=0,0.01 GRID_MAX_EP=50 GRID_PATIENCE=5
   export GRID_SWEEP=${GRID_SWEEP:-draw0}
