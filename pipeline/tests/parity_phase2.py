@@ -1,79 +1,155 @@
-"""parity_phase2.py -- output parity for Phase 2 script merges (CPU post-processing). For each case, the OLD scripts
-(taken from git tag v5-as-run, commit b3ed0e0c28e3, so the test survives their removal) and the NEW merged script are run
-on the SAME real input files and must write byte-identical outputs (and identical stdout). Each output is also compared
-with the published file in outputs/ that the paper uses.
+"""parity_phase2.py -- output parity for Phase 2 script merges. For each case, the OLD scripts (taken from git tag
+v5-as-run, commit b3ed0e0c28e3, so the test survives their removal) and the NEW merged script are run on the SAME real
+input files and must write identical outputs. Where the paper uses a published copy in outputs/, it is compared too
+(reported, not required: a rerun may differ in the last digits, see README).
 
-SAFE: every run gets its own scratch directory under $TMPDIR; inputs are symlinked into it (read-only use), outputs are
-written only there. Nothing in outputs/ is written, moved or deleted. Needs the real inputs, so run it on Roar, e.g.
-  sbatch --account=open --partition=open --mem=64G --time=02:00:00 -o logs/parity_p2_%j.out \
-         --wrap "cd <root> && venv/bin/python pipeline/tests/parity_phase2.py xd_boot"
-Exit 0 only if every compared file and stdout matches (PARITY2_OK)."""
-import os, sys, glob, shutil, hashlib, subprocess, tempfile, filecmp
+Comparison: byte-identical, except PDFs, which are compared after removing their /CreationDate and /ModDate stamps.
+stdout is compared where it carries no run-directory paths.
+
+SAFE: every run gets its own scratch directory under $TMPDIR; inputs are symlinked into it (read-only use) at the same
+relative paths, outputs are written only there. Nothing in the project tree is written, moved or deleted. Needs the real
+inputs, so run it on Roar, e.g.
+  sbatch --account=open --mem=16G --time=01:00:00 -o logs/parity_p2_%j.out \\
+         --wrap "cd <root> && module load anaconda && module load r && venv/bin/python pipeline/tests/parity_phase2.py sudan"
+Cases: xd_boot, sudan.  Exit 0 only if every case run is PARITY2_OK."""
+import os, re, sys, glob, shutil, hashlib, subprocess, tempfile, difflib
 
 ROOT = "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast"
 V5_COMMIT = "b3ed0e0c28e34fd49dc431d93b45ea1e4a3e7743"
 PY = f"{ROOT}/venv/bin/python"
+P, X, V = "scripts/phase4_scaling", "scripts/crossdomain", "scripts/replication_v5"
+NE_ZIP = "data_raw/shapefiles/ne_50m_admin_0/ne_50m_admin_0_countries.zip"
 
-# case -> list of runs. A run: (label, old script at the tag, old env, new script in the tree, new env,
-#                                input globs relative to ROOT to symlink into the run dir, outputs to compare, published dir)
+# A case is a list of runs. Run fields:
+#   label; mode "envdir" (inputs linked flat into the run dir, whose path goes in env var `dirvar`; cwd = ROOT) or
+#   "cwd" (inputs linked at their relative paths, cwd = run dir); inputs (globs relative to ROOT); mkdirs (relative,
+#   created before the run); old: list of commands ({OLD} = tag copy of scripts, {D} = run dir); new: same with {NEW} =
+#   project scripts; env: extra environment for both; outputs: relative files, or a directory to compare recursively;
+#   published: True if outputs/<same path> in ROOT is the copy the paper uses; stdout: compare stdout.
 CASES = {
     "xd_boot": [
-        ("M", "scripts/crossdomain/xd_m_boot.py", {}, "scripts/crossdomain/xd_boot.py", {"XD_CAP": "M"},
-         ["outputs/crossdomain/preds_brazil_*.npz"], ["xd_m_boot.csv"], "outputs/crossdomain"),
-        ("S", "scripts/crossdomain/xd_s_boot.py", {}, "scripts/crossdomain/xd_boot.py", {"XD_CAP": "S"},
-         ["outputs/crossdomain/preds_brazil_*.npz"], ["xd_s_boot.csv"], "outputs/crossdomain"),
+        dict(label="M", mode="envdir", dirvar="XC_DIR", inputs=[f"outputs/crossdomain/preds_brazil_*.npz"], mkdirs=[],
+             old=[[PY, f"{{OLD}}/{X}/xd_m_boot.py"]], new=[[PY, f"{{NEW}}/{X}/xd_boot.py"]], env_new={"XD_CAP": "M"},
+             outputs=["xd_m_boot.csv"], published="outputs/crossdomain", stdout=True),
+        dict(label="S", mode="envdir", dirvar="XC_DIR", inputs=[f"outputs/crossdomain/preds_brazil_*.npz"], mkdirs=[],
+             old=[[PY, f"{{OLD}}/{X}/xd_s_boot.py"]], new=[[PY, f"{{NEW}}/{X}/xd_boot.py"]], env_new={"XD_CAP": "S"},
+             outputs=["xd_s_boot.csv"], published="outputs/crossdomain", stdout=True),
+    ],
+    "sudan": [
+        dict(label="sudan", mode="cwd", inputs=["data_intermediate/baseline_features.parquet", NE_ZIP], mkdirs=["outputs"],
+             old=[[PY, f"{{OLD}}/{P}/audit_cells_export.py"], ["Rscript", f"{{OLD}}/{P}/audit_cell_country.R"],
+                  [PY, f"{{OLD}}/{P}/sudan_cells_fix.py"]],
+             new=[[PY, f"{{NEW}}/{P}/sudan_cells.py"]],
+             outputs=["outputs/audit_cells_in.csv", "outputs/audit_cell_country.csv", "outputs/sudan_cells_keep.csv",
+                      "outputs/sudan_exclude_cells.csv"], published=".", stdout=True),
     ],
 }
-# env var each case uses for its input/output directory
-DIRVAR = {"xd_boot": "XC_DIR"}
+ENV_R = {"R_PROFILE_USER": f"{ROOT}/{P}/Rprofile_cairo"}   # as the old wrapped CPU jobs set it
 
-def sha(p): return hashlib.sha1(open(p, "rb").read()).hexdigest()
 
-def main(case):
-    assert case in CASES, f"unknown case {case}; known: {sorted(CASES)}"
+def sha(b): return hashlib.sha1(b).hexdigest()[:12]
+def norm(path):
+    b = open(path, "rb").read()
+    if path.endswith(".pdf"):
+        b = re.sub(rb"/(CreationDate|ModDate)\s*\(D:[^)]*\)", b"", b)
+    return b
+
+
+def old_copy(W, rel):
+    dst = os.path.join(W, "old", rel)
+    if not os.path.exists(dst):
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        open(dst, "wb").write(subprocess.run(["git", "-C", ROOT, "show", f"v5-as-run:{rel}"], capture_output=True, check=True).stdout)
+    return dst
+
+
+def link_inputs(d, globs, flat):
+    n = 0
+    for g in globs:
+        hits = sorted(glob.glob(os.path.join(ROOT, g)))
+        assert hits, f"no input matches {g}"
+        for f in hits:
+            rel = os.path.basename(f) if flat else os.path.relpath(f, ROOT)
+            os.makedirs(os.path.dirname(os.path.join(d, rel)) or d, exist_ok=True)
+            os.symlink(f, os.path.join(d, rel)); n += 1
+    return n
+
+
+def files_under(d, outs):
+    got = {}
+    for o in outs:
+        p = os.path.join(d, o)
+        if os.path.isdir(p):
+            for r, _, fs in os.walk(p):
+                for f in fs: got[os.path.relpath(os.path.join(r, f), d)] = os.path.join(r, f)
+        elif os.path.isfile(p):
+            got[o] = p
+    return got
+
+
+def run_side(W, run, side):
+    d = os.path.join(W, f"{run['label']}_{side}"); os.makedirs(d)
+    n = link_inputs(d, run["inputs"], flat=(run["mode"] == "envdir"))
+    for m in (run.get("new_mkdirs_only") if side == "new" and run.get("new_mkdirs_only") is not None else run["mkdirs"]):
+        os.makedirs(os.path.join(d, m), exist_ok=True)
+    env = dict(os.environ); env.update(ENV_R); env.update(run.get("env_new", {}) if side == "new" else {})
+    cwd = d if run["mode"] == "cwd" else ROOT
+    if run["mode"] == "envdir": env[run["dirvar"]] = d
+    out, rc = "", 0
+    for cmd in run[side]:
+        c = []
+        for a in cmd:
+            if "{OLD}" in a: a = old_copy(W, a.replace("{OLD}/", ""))
+            a = a.replace("{NEW}", ROOT).replace("{D}", d)
+            c.append(a)
+        p = subprocess.run(c, cwd=cwd, env=env, capture_output=True, text=True)
+        out += p.stdout
+        print(f"  [{run['label']}/{side}] {os.path.basename(c[1])} rc={p.returncode}", flush=True)
+        if p.returncode:
+            print(p.stdout[-1500:], p.stderr[-3000:], flush=True); rc = p.returncode; break
+    return d, rc, out, n
+
+
+def main(cases):
+    for c in cases: assert c in CASES, f"unknown case {c}; known: {sorted(CASES)}"
     c = subprocess.run(["git", "-C", ROOT, "rev-parse", "v5-as-run^{commit}"], capture_output=True, text=True).stdout.strip()
     assert c == V5_COMMIT, f"tag v5-as-run resolves to '{c}', expected {V5_COMMIT}"
-    W = tempfile.mkdtemp(prefix=f"parity_p2_{case}_", dir=os.environ.get("TMPDIR", "/tmp"))
+    W = tempfile.mkdtemp(prefix="parity_p2_", dir=os.environ.get("TMPDIR", "/tmp"))
     print("scratch:", W, flush=True)
-    ok = True
+    ok_all = True
     try:
-        for label, old_s, old_env, new_s, new_env, globs, outs, pub in CASES[case]:
-            old_copy = os.path.join(W, "old_scripts", old_s)
-            os.makedirs(os.path.dirname(old_copy), exist_ok=True)
-            open(old_copy, "wb").write(subprocess.run(["git", "-C", ROOT, "show", f"v5-as-run:{old_s}"],
-                                                      capture_output=True, check=True).stdout)
-            res = {}
-            for side, script, env_extra in (("old", old_copy, old_env), ("new", os.path.join(ROOT, new_s), new_env)):
-                d = os.path.join(W, f"{label}_{side}"); os.makedirs(d)
-                n = 0
-                for g in globs:
-                    for f in sorted(glob.glob(os.path.join(ROOT, g))):
-                        os.symlink(f, os.path.join(d, os.path.basename(f))); n += 1
-                env = dict(os.environ); env.update(env_extra); env[DIRVAR[case]] = d
-                p = subprocess.run([PY, script], cwd=ROOT, env=env, capture_output=True, text=True)
-                res[side] = (p.returncode, p.stdout, p.stderr, d)
-                print(f"[{label}/{side}] {os.path.relpath(script, W) if script.startswith(W) else new_s} inputs={n} rc={p.returncode}", flush=True)
-                if p.returncode: print(p.stderr[-3000:]); ok = False
-            (ro, so, eo, do), (rn, sn, en, dn) = res["old"], res["new"]
-            if so != sn:
-                ok = False; print(f"[{label}] STDOUT DIFFERS");
-                import difflib; print("".join(list(difflib.unified_diff(so.splitlines(1), sn.splitlines(1), "old", "new"))[:40]))
-            else:
-                print(f"[{label}] stdout identical ({len(so.splitlines())} lines)")
-            for o in outs:
-                fo, fn, fp = os.path.join(do, o), os.path.join(dn, o), os.path.join(ROOT, pub, o)
-                if not (os.path.isfile(fo) and os.path.isfile(fn)):
-                    ok = False; print(f"[{label}] {o}: missing (old {os.path.isfile(fo)}, new {os.path.isfile(fn)})"); continue
-                same = filecmp.cmp(fo, fn, shallow=False)
-                pubsame = os.path.isfile(fp) and filecmp.cmp(fo, fp, shallow=False)
-                print(f"[{label}] {o}: old==new {same} (sha1 {sha(fo)[:12]} / {sha(fn)[:12]}); old==published {pubsame}"
-                      + (f" (published {sha(fp)[:12]})" if os.path.isfile(fp) else " (no published file)"))
-                ok = ok and same
-                if not pubsame: print(f"[{label}] NOTE {o}: rerun differs from the published file (reported, not a merge failure)")
+        for case in cases:
+            print(f"== case {case}", flush=True)
+            ok = True
+            for run in CASES[case]:
+                do, ro, so, n = run_side(W, run, "old")
+                dn, rn, sn, _ = run_side(W, run, "new")
+                print(f"[{run['label']}] inputs linked: {n}", flush=True)
+                if ro or rn: ok = False; continue
+                if run["stdout"]:
+                    if so == sn: print(f"[{run['label']}] stdout identical ({len(so.splitlines())} lines)")
+                    else:
+                        ok = False; print(f"[{run['label']}] STDOUT DIFFERS")
+                        print("".join(list(difflib.unified_diff(so.splitlines(1), sn.splitlines(1), "old", "new"))[:40]))
+                fo, fn = files_under(do, run["outputs"]), files_under(dn, run["outputs"])
+                if set(fo) != set(fn) or not fo:
+                    ok = False; print(f"[{run['label']}] OUTPUT SETS DIFFER: only old {sorted(set(fo)-set(fn))}, only new {sorted(set(fn)-set(fo))}")
+                for rel in sorted(set(fo) & set(fn)):
+                    a, b = norm(fo[rel]), norm(fn[rel])
+                    same = a == b
+                    msg = f"[{run['label']}] {rel}: old==new {same} ({sha(a)} / {sha(b)})"
+                    if run["published"] is not None:
+                        pp = os.path.join(ROOT, run["published"], rel)
+                        msg += f"; old==published {os.path.isfile(pp) and norm(pp) == a}" if os.path.isfile(pp) else "; no published copy"
+                    print(msg, flush=True)
+                    ok = ok and same
+            print(f"== case {case}: {'PARITY2_OK' if ok else 'PARITY2_FAILED'}", flush=True)
+            ok_all = ok_all and ok
     finally:
         shutil.rmtree(W, ignore_errors=True)
-    print("PARITY2_OK" if ok else "PARITY2_FAILED", flush=True)
-    return 0 if ok else 1
+    print("PARITY2_OK" if ok_all else "PARITY2_FAILED", flush=True)
+    return 0 if ok_all else 1
+
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else ""))
+    sys.exit(main(sys.argv[1:] or sorted(CASES)))

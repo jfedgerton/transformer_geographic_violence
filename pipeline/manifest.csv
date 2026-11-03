@@ -2,11 +2,11 @@ path,md5,bytes,role,first_referenced_by
 env/requirements_frozen_2026-10-19.txt,b912b48924f93bf4c547c1a6b91574c6,1403,config,"extra (config, provenance, tools)"
 env/versions_2026-10-19.txt,9e2e62d309694b7a45150f6bed2ddbfc,94,config,"extra (config, provenance, tools)"
 figures_tables/fig_cell_alerts.R,21f619353af54abe813fa58abbf60e86,48841,script,pipeline/tasks.sbatch
-pipeline/README.md,52de11ea9a0ddcad62e878b07372ccda,10132,driver,"extra (config, provenance, tools)"
-pipeline/run.sh,bb0fe4b330efd475fccf17f6cf361c1c,33316,driver,pipeline/run.sh
+pipeline/README.md,e2792be5f70645ee9362370132664fa9,10764,driver,"extra (config, provenance, tools)"
+pipeline/run.sh,5ca741e1d9926885307ed6f5a51df335,33250,driver,pipeline/run.sh
 pipeline/tasks.sbatch,c77e37ba232cbeb83c92104c5f4e70e4,20391,driver,pipeline/run.sh
-pipeline/tests/parity_phase1.py,7dc1c0d29f7be34bff75455436a943f8,24604,driver,"extra (config, provenance, tools)"
-pipeline/tests/parity_phase2.py,8fe9fffeb795cb23e9f11eefb45cf02b,5223,driver,"extra (config, provenance, tools)"
+pipeline/tests/parity_phase1.py,8fc530be31a2e495f5e928ba76c186be,27250,driver,"extra (config, provenance, tools)"
+pipeline/tests/parity_phase2.py,38205c1f2b8465f505459a8f231878ff,8363,driver,"extra (config, provenance, tools)"
 pipeline/tests/v5_baseline_blobs.txt,732d4db209ed0119709d3a2a3f932c8c,4359,driver,"extra (config, provenance, tools)"
 scripts/00_master.py,2d8f238269d02455c9d38a21a7a565bc,9761,script,pipeline/run.sh
 scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,pipeline/tasks.sbatch (rebuild loop)
@@ -38,8 +38,6 @@ scripts/phase4_scaling/alert_budget_sweep_fullsrc.py,ef232a00c42a513d9079b0dd7d8
 scripts/phase4_scaling/alert_counts_finetune_fullsrc_full.py,e9ff320471579bcbf274de74b2f8be03,6665,script,pipeline/run.sh
 scripts/phase4_scaling/alert_counts_fullsrc.py,58d107777fc2388eb1af0c7d159cf441,10078,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/alert_profile_fullsrc.py,cf7ff17b562486788e7bf561ba578e25,15568,script,pipeline/tasks.sbatch
-scripts/phase4_scaling/audit_cell_country.R,da1e0a0819952c41c1c901485a582dea,1683,script,pipeline/run.sh
-scripts/phase4_scaling/audit_cells_export.py,cc31c55c54abcfd7d2a84e17699286f8,769,script,pipeline/run.sh
 scripts/phase4_scaling/bootstrap_ci_fullsrc.py,c33e42a2091cf21f206486e8c0202ad4,12796,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/bootstrap_ft_fullsrc.py,6bdb15ca0e6e95bd9a5d5ada285957fc,10373,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/build_seen_tokens_fullsrc.py,886b2703ba37df7b1e5a6258d70373ca,6621,script,pipeline/tasks.sbatch
@@ -65,7 +63,7 @@ scripts/phase4_scaling/regions.py,3482854684a2050665ccc4803dc9a5f1,4565,script,s
 scripts/phase4_scaling/share_grid_ces.py,cb7c595a5d7d17b84565d99ded030c04,16532,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/share_grid_domain.py,7a46cce7e207af59325451aa13c6af30,14783,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/share_grid_fullsrc.py,828f0cb9df029dfb433683816b265488,29776,script,pipeline/tasks.sbatch
-scripts/phase4_scaling/sudan_cells_fix.py,3cde2b1aad26d8a157c5a6a01f32cba2,1514,script,pipeline/run.sh
+scripts/phase4_scaling/sudan_cells.py,edc20557f33b16b4a73429ff99d71b7b,5403,script,pipeline/run.sh
 scripts/phase4_scaling/train_repr_obj.py,c54e27c61ae10ba25a9c3535a6e8930b,21934,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/transfer_eval_region_fullpreds.py,e89ca1620d781574673b54afdc68e334,19004,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/vocab_remap.py,2556fc91c8136555753642290e9847ce,4157,script,pipeline/tasks.sbatch

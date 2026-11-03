@@ -86,12 +86,18 @@ Seeds: encoders 123, 456, 789; XGBoost, training-share draws and bootstraps use 
 
 Each merge replaces scripts that differed only by a setting with one script. Proof: `pipeline/tests/parity_phase2.py
 <case>` (run on Roar; needs the real inputs) runs the old scripts from tag `v5-as-run` and the new script on the same
-inputs in a scratch folder; outputs and stdout must be byte-identical. The Phase 1 test maps each merged script back to
-the scripts it replaced (`PHASE2_MAP`) and requires the merged call, with its selector, to be present.
+inputs in a scratch folder; outputs must be byte-identical (PDFs after removing their creation and modification dates),
+and so must stdout where it holds no scratch paths. The Phase 1 test maps each merged script back to the scripts it
+replaced (`PHASE2_MAP` for a selector, `PHASE2_CHAIN` for a chain of calls in a wrapped job) and requires the merged call
+to be present.
 
 | Merged script | Replaces | Selector | Parity (Roar) |
 |---|---|---|---|
 | `scripts/crossdomain/xd_boot.py` | `xd_m_boot.py`, `xd_s_boot.py` | `XD_CAP=M` / `S` | job 56955161: both outputs and stdout byte-identical |
+| `scripts/phase4_scaling/sudan_cells.py` | `audit_cells_export.py`, `audit_cell_country.R` (embedded verbatim, run with `Rscript`), `sudan_cells_fix.py` | none (runs all three steps) | job 56961249: 4 outputs and stdout byte-identical; outputs equal the published files |
+
+Sudan: `country_slice_fullsrc.py` and `country_window_fullsrc.py` (unchanged analysis scripts) still name the old
+Sudan scripts in a comment; the file they read, `outputs/sudan_cells_keep.csv`, is unchanged.
 
 Note: rerunning the unchanged old Brazil bootstrap today reproduces the published `xd_m_boot.csv`/`xd_s_boot.csv` values
 exactly except in the last printed digits (largest difference about 1e-16; likely floating-point summation order, not verified); reported

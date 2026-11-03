@@ -253,7 +253,7 @@ def compare_plans(Orows, Nrows):
             for k, (va, vb) in DENGUE_EXPECTED.items():
                 if (a["opts"].get(k), b["opts"].get(k)) != (va, vb): fails.append((n, "dengue exception not as pinned", k))
         if a["deps"] != b["deps"]: fails.append((n, "deps", a["deps"], b["deps"]))
-        if a["wrap"] != b["wrap"]: fails.append((n, "wrap differs"))
+        if a["wrap"] != chain_wrap(n, b["wrap"]): fails.append((n, "wrap differs"))
         if a["env"] != b["env"]:
             ks = sorted(k for k in set(a["env"]) | set(b["env"]) if a["env"].get(k) != b["env"].get(k))
             fails.append((n, "environment at submission differs", ks))
@@ -312,6 +312,46 @@ def phase2_normalize(job, trace, mode):
         trace = trace.replace(a, b)
     return trace
 
+
+# Phase 2 merges of a chain of calls in a wrapped job into one script. Plan: the new --wrap with the merged call replaced
+# by the old calls must equal the old --wrap exactly. Bodies: in the OLD trace the run of old call records (all with the
+# same working directory and environment block) is collapsed into one record with the merged call; the result must equal
+# the NEW trace exactly. Under py_fail the chain stops at its first call, so only that record is present.
+_FO, _P, _V = "figures_tables/v5", "scripts/phase4_scaling", "scripts/replication_v5"
+_NE = "data_raw/shapefiles/ne_50m_admin_0/ne_50m_admin_0_countries.zip"
+PHASE2_CHAIN = {
+    "sudan_cells_keep": dict(
+        new_wrap=f"venv/bin/python {_P}/sudan_cells.py",
+        old_wrap=f"venv/bin/python {_P}/audit_cells_export.py; Rscript {_P}/audit_cell_country.R; venv/bin/python {_P}/sudan_cells_fix.py",
+        new_cmd=f"CMD venv/bin/python {_P}/sudan_cells.py",
+        old_cmds=[f"CMD venv/bin/python {_P}/audit_cells_export.py", f"CMD Rscript {_P}/audit_cell_country.R",
+                  f"CMD venv/bin/python {_P}/sudan_cells_fix.py"]),
+}
+def chain_wrap(job, wrap):
+    """new --wrap -> what the old --wrap should be (unchanged if the job has no chain merge)."""
+    c = PHASE2_CHAIN.get(job)
+    if c is None or wrap is None: return wrap
+    nw, ow = c["new_wrap"].replace("{R}", R), c["old_wrap"].replace("{R}", R)
+    if wrap.count(nw) != 1: return wrap + " PHASE2_CHAIN_NEW_CALL_NOT_FOUND"
+    return wrap.replace(nw, ow)
+def chain_collapse(job, trace, mode):
+    """old trace -> what the new trace should be."""
+    c = PHASE2_CHAIN.get(job)
+    if c is None: return trace
+    olds, new = [x.replace("{R}", R) for x in c["old_cmds"]], c["new_cmd"].replace("{R}", R)
+    recs, cur = [], None
+    for line in trace.splitlines(keepends=True):
+        if line.startswith("CMD ") or cur is None: cur = [line]; recs.append(cur)
+        else: cur.append(line)
+    heads = [r[0].rstrip("\n") for r in recs]
+    if olds[0] not in heads: return trace
+    i = heads.index(olds[0])
+    k = len(olds) if mode == "ok" else 1
+    if heads[i:i + k] != olds[:k] or any(recs[j][1:] != recs[i][1:] for j in range(i, i + k)):
+        return trace + "\nPHASE2_CHAIN_OLD_CALLS_NOT_AS_PINNED\n"
+    merged = [new + "\n"] + recs[i][1:]
+    return "".join("".join(r) for r in recs[:i]) + "".join(merged) + "".join("".join(r) for r in recs[i + k:])
+
 accepted = [0]
 def compare_bodies(O, N, only=None):
     fails, nb = [], 0
@@ -323,6 +363,7 @@ def compare_bodies(O, N, only=None):
         for idx, mode in plan_:
             (ro, to), (rn, tn) = run_body(a, idx, mode, n), run_body(b, idx, mode, n)
             tn = phase2_normalize(n, tn, mode)
+            to = chain_collapse(n, to, mode)
             nb += 1
             if mode == "module_fail" and n in SETE_ADDED:
                 bad = not (ro == 0 and rn == 23 and tn == "CMD module load anaconda\n" and to.startswith(tn))
@@ -368,6 +409,7 @@ MUTATIONS = [  # (name, file, old text, new text, bodies to run)
     ("changed memory request", "pipeline/run.sh", "--mem=64G --time=06:00:00", "--mem=32G --time=06:00:00", []),
     ("#SBATCH directive in tasks.sbatch", "pipeline/tasks.sbatch", "#!/bin/bash\n", "#!/bin/bash\n#SBATCH --constraint=__selftest__\n", ["br_sim_hom"]),
     ("merged script without its selector", "pipeline/tasks.sbatch", "  export XD_CAP\n  md5sum $X/xd_boot.py", "  unset XD_CAP\n  md5sum $X/xd_boot.py", ["xd_boot_M"]),
+    ("merged Sudan script replaced by its first step", "pipeline/run.sh", '"venv/bin/python $P/sudan_cells.py"', '"venv/bin/python $P/audit_cells_export.py"', ["sudan_cells_keep"]),
     ("export mode NONE", "pipeline/run.sh", "D_PRIO=$(submit data_prio --account=open", "D_PRIO=$(submit data_prio --export=NONE --account=open", ["data_prio"]),
 ]
 

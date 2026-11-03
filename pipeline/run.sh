@@ -266,9 +266,9 @@ pre_07() {
 run_07() {
   local A D_SL D_WI D_LO D_HI DG D_SUD
   DG=$(ids ${FT2[M]:-} ${FTF[M]:-} ${NEST[M]:-})
-  # country_slice/window_fullsrc.py read outputs/sudan_cells_keep.csv at import; it comes from this 3-step chain
+  # country_slice/window_fullsrc.py read outputs/sudan_cells_keep.csv at import; it comes from this 3-step chain (one script)
   # (cell-to-country audit under Natural Earth 50 m borders). Assigned apart from `local` so a failed submission stops the driver.
-  D_SUD=$(wrapcpu sudan_cells_keep 16G 00:30:00 "$D_DATA" "venv/bin/python $P/audit_cells_export.py; Rscript $P/audit_cell_country.R; venv/bin/python $P/sudan_cells_fix.py")
+  D_SUD=$(wrapcpu sudan_cells_keep 16G 00:30:00 "$D_DATA" "venv/bin/python $P/sudan_cells.py")
   DG=$(ids $DG $D_SUD)
   for A in top2 full; do
     D_SL=$(job ukr_slice_$A tgv_slicefs slicefs_%j $OPEN --cpus-per-task=2 --mem=48G --time=02:00:00 $(dep $DG) --export=ALL,TASK=country_slice,SIZE=M,SLICE_TARGET=incidence,SLICE_FT=$A)
