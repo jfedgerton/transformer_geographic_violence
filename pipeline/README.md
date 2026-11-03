@@ -14,7 +14,8 @@ pipeline/
   run.sh           driver: checks, then submits every job with its resources and dependencies (stages 00-09)
   tasks.sbatch     the only Slurm job script; TASK=<name> selects the job body (one branch per former launcher)
   manifest.csv     every file the pipeline runs, with md5, size and role
-  tests/parity_phase1.py   proves run.sh + tasks.sbatch submit exactly what the v5 drivers + launchers submitted
+  tests/parity_phase1.py   proves run.sh + tasks.sbatch submit and run what the v5 drivers + launchers did (tag v5-as-run)
+  tests/v5_baseline_blobs.txt   git blob hashes of the 51 v5 files the test rebuilds from the tag
 scripts/           analysis code, byte-identical to the code that produced the reported results
 scripts/replication_v5/   code written for the package (figure and table generators, author tools)
 ```
@@ -61,11 +62,23 @@ Seeds: encoders 123, 456, 789; XGBoost, training-share draws and bootstraps use 
 - Resources (account, partition, GPU, CPUs, memory, time, array, job name, log name) moved from launcher headers to
   `run.sh`, using the effective values of the v5 runs (header plus the v5 driver's overrides).
 - Branches of the old Brazil launchers for unreported job sets were not carried over.
-- `tasks.sbatch` runs with `set -eo pipefail`; a few old launchers had no `set -e`.
+- `tasks.sbatch` runs with `set -eo pipefail`. Eleven jobs whose old launchers had no `set -e` (CES, crime and dengue
+  grids and pretraining, seen tokens, dengue ingest) now stop if `module load anaconda` fails instead of carrying on.
+- `module load anaconda` runs only in the branches whose launchers did it; the Brazil branches do not load it, as before.
 - `run_dengue_ingest` now has a job name and writes `logs/dengue_ingest_<jobid>.out` (was `slurm-<jobid>.out` in the root).
-- `tests/parity_phase1.py`: 77 of 77 submissions with identical effective options, dependencies and wrapped commands;
-  1,499 job bodies (every job x every array index) with identical command lines and model-relevant environment.
-  A deliberately changed learning rate and memory request were both caught.
+- `tests/parity_phase1.py` (strengthened after the Codex review; runs in a temporary copy against stubs, submits nothing):
+  - baseline: the v5 drivers and launchers are rebuilt from git tag `v5-as-run` (commit b3ed0e0c28e3) and checked
+    against pinned blob hashes, so the test does not need `replication_v5/` or the launchers in the working tree;
+  - plan: both drivers run against a stub `sbatch` that records arguments, full environment and working directory:
+    77 of 77 submissions, no duplicate names or ids, identical effective options, dependencies, wrapped commands and
+    environment at submission;
+  - preflight: `pre_01`-`pre_09` identical;
+  - bodies: all 77 submissions including the wrapped CPU jobs, every array index, with the full environment logged at
+    every python/Rscript call plus every `module` and `activate` call; repeated with `module` failing and with every
+    analysis call failing. 1,726 runs; no difference except the pinned `set -e` stops above;
+  - self-test: a duplicate tables submission, an exported `CRIME_TARGET`, a global `module load`, a changed learning
+    rate and a changed memory request are each caught.
+  - not covered: stage 00 (run by every DRY run), login-shell profiles, the analysis scripts themselves (unchanged).
 
 ## Requirements
 

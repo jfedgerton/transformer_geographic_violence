@@ -2,10 +2,11 @@ path,md5,bytes,role,first_referenced_by
 env/requirements_frozen_2026-10-19.txt,b912b48924f93bf4c547c1a6b91574c6,1403,config,"extra (config, provenance, tools)"
 env/versions_2026-10-19.txt,9e2e62d309694b7a45150f6bed2ddbfc,94,config,"extra (config, provenance, tools)"
 figures_tables/fig_cell_alerts.R,21f619353af54abe813fa58abbf60e86,48841,script,pipeline/tasks.sbatch
-pipeline/README.md,a8b078ac95bd4e9e12bdc0dd0135bb73,7514,driver,"extra (config, provenance, tools)"
+pipeline/README.md,1f37185719742f16080faf1a34996dcc,8865,driver,"extra (config, provenance, tools)"
 pipeline/run.sh,15dc701bc20c4e4bf7b786286b972279,33307,driver,pipeline/run.sh
-pipeline/tasks.sbatch,725728611ecd757cb74c9ce0f154475b,19742,driver,pipeline/run.sh
-pipeline/tests/parity_phase1.py,416d39fd5500cd6f812279539f87de25,10795,driver,"extra (config, provenance, tools)"
+pipeline/tasks.sbatch,263f0e99f3b8dc9dde0a49896706fad4,20293,driver,pipeline/run.sh
+pipeline/tests/parity_phase1.py,d445f517d99f6d52cc0669f2235c9fe8,22135,driver,"extra (config, provenance, tools)"
+pipeline/tests/v5_baseline_blobs.txt,732d4db209ed0119709d3a2a3f932c8c,4359,driver,"extra (config, provenance, tools)"
 scripts/00_master.py,2d8f238269d02455c9d38a21a7a565bc,9761,script,pipeline/run.sh
 scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,scripts/rebuild_pipeline.sbatch (loop)
 scripts/01b_ingest_ucdp.py,f54f8f35dde03523eb736775be790227,10781,script,scripts/rebuild_pipeline.sbatch (loop)
@@ -75,5 +76,5 @@ scripts/replication_v5/fig_random_encoder.R,2cac05ab912b0f8c1d290a6afea34e82,646
 scripts/replication_v5/fig_share_curve.R,09b6bdd1f028e69e62fe4dbc617fcf3d,4205,new_v5,pipeline/run.sh
 scripts/replication_v5/fig_share_regions.R,c570eb04aa21f80b071a67deae52479e,4815,new_v5,pipeline/run.sh
 scripts/replication_v5/fig_ukraine_alert_gain_arm.R,676adf1948d0d64a9d4c0d88aa57112d,8737,new_v5,pipeline/run.sh
-scripts/replication_v5/make_manifest.py,ecdd06eaef56706c9b62a53c865e7892,4706,new_v5,"extra (config, provenance, tools)"
+scripts/replication_v5/make_manifest.py,97f053b51a9704dd3892c7f9d47e1d54,4746,new_v5,"extra (config, provenance, tools)"
 scripts/replication_v5/make_tables.py,25cb0eff54365381b04bd605c5e89051,48297,new_v5,pipeline/run.sh

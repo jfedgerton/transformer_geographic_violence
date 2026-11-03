@@ -69,7 +69,7 @@ while todo:
 for extra in ["scripts/phase4_scaling/Rprofile_cairo", "env/requirements_frozen_2026-10-19.txt", "env/versions_2026-10-19.txt",
               "scripts/00_master.py", "scripts/crossdomain/fetch_sim_dores.sh",
               "scripts/replication_v5/check_tables.py", "scripts/replication_v5/make_manifest.py", "pipeline/README.md",
-              "pipeline/tests/parity_phase1.py"]:
+              "pipeline/tests/parity_phase1.py", "pipeline/tests/v5_baseline_blobs.txt"]:
     if path_of(extra):
         seen[extra] = path_of(extra); why.setdefault(extra, "extra (config, provenance, tools)")
     else:
