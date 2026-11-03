@@ -339,12 +339,13 @@ xd_L_c1)            # was crossdomain/launch_xd_ladder.sbatch, jobset c_nested t
   venv/bin/python $X/xd_grid_brazil_v2.py
   echo XDBR_DONE ;;
 
-xd_boot)            # was crossdomain/launch_xd_m_boot.sbatch (XD_CAP=M) and launch_xd_s_boot.sbatch (XD_CAP=S)
+xd_boot)            # was crossdomain/launch_xd_m_boot.sbatch (XD_CAP=M) and launch_xd_s_boot.sbatch (XD_CAP=S); since Phase 2
+                    # both run the merged xd_boot.py (byte-identical outputs to xd_m_boot.py / xd_s_boot.py, parity_phase2.py)
   : "${XD_CAP:?set XD_CAP=M or S}"
-  case "$XD_CAP" in M) B=$X/xd_m_boot.py ;; S) B=$X/xd_s_boot.py ;; *) echo "XD_CAP must be M or S"; exit 1 ;; esac
-  unset XD_CAP   # dispatch variable only
-  md5sum $B $X/xd_grid_brazil_v6.py
-  venv/bin/python $B ;;
+  case "$XD_CAP" in M|S) ;; *) echo "XD_CAP must be M or S"; exit 1 ;; esac
+  export XD_CAP
+  md5sum $X/xd_boot.py $X/xd_grid_brazil_v6.py
+  venv/bin/python $X/xd_boot.py ;;
 
 xd_plboot)          # was crossdomain/launch_xd_placebo_boot_v3M.sbatch
   md5sum $X/xd_placebo_boot_v3M.py

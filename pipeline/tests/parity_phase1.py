@@ -26,7 +26,7 @@ Checks (exit 0 only if all pass):
      last array index with (a) `module` failing and (b) every python/Rscript call failing.
  (4) self-test: the same checks are rerun on deliberately broken copies of the new pipeline and must FAIL for each:
      a duplicate tables submission, an exported CRIME_TARGET, a global `module load anaconda` (affects the Brazil jobs),
-     a changed learning rate, a changed memory request, a #SBATCH line in tasks.sbatch, an --export=NONE submission.
+     a changed learning rate, a changed memory request, a #SBATCH line in tasks.sbatch, an --export=NONE submission, a merged script called without its selector.
 Accepted difference (pinned, see SETE_ADDED): 11 jobs whose old launchers had no `set -e` now stop when `module load`
 fails instead of carrying on. Known limits: login-shell profile files are not simulated (the wrapped jobs' `bash -lc` is run as `bash -c` on both sides);
 analysis scripts are not executed (they are unchanged byte for byte, see pipeline/manifest.csv)."""
@@ -298,6 +298,20 @@ def run_body(row, idx, mode, jobname):
     tr = open(TRACE).read() if os.path.exists(TRACE) else ""
     return p.returncode, tr
 
+# Phase 2 merges: jobs whose old script(s) were merged into one new script. In the NEW trace the merged script's name is
+# mapped back to the old one and the selector variable the old script did not receive is dropped; everything else must
+# match exactly. Output equivalence of each merge is proven separately by pipeline/tests/parity_phase2.py.
+PHASE2_MAP = {
+    "xd_boot_M": [("scripts/crossdomain/xd_boot.py", "scripts/crossdomain/xd_m_boot.py"), ("  ENV XD_CAP=M\n", "")],
+    "xd_boot_S": [("scripts/crossdomain/xd_boot.py", "scripts/crossdomain/xd_s_boot.py"), ("  ENV XD_CAP=S\n", "")],
+}
+def phase2_normalize(job, trace, mode):
+    for a, b in PHASE2_MAP.get(job, []):
+        if mode == "ok" and a not in trace:   # the merged script must really be called with its selector
+            return trace + f"\nPHASE2_MAP_ITEM_NOT_FOUND {a!r}\n"
+        trace = trace.replace(a, b)
+    return trace
+
 accepted = [0]
 def compare_bodies(O, N, only=None):
     fails, nb = [], 0
@@ -308,6 +322,7 @@ def compare_bodies(O, N, only=None):
         plan_ = [(i, "ok") for i in idxs] + [(i, m) for i in sorted({idxs[0], idxs[-1]}, key=lambda x: (x is None, x)) for m in ("module_fail", "py_fail")]
         for idx, mode in plan_:
             (ro, to), (rn, tn) = run_body(a, idx, mode, n), run_body(b, idx, mode, n)
+            tn = phase2_normalize(n, tn, mode)
             nb += 1
             if mode == "module_fail" and n in SETE_ADDED:
                 bad = not (ro == 0 and rn == 23 and tn == "CMD module load anaconda\n" and to.startswith(tn))
@@ -352,6 +367,7 @@ MUTATIONS = [  # (name, file, old text, new text, bodies to run)
     ("changed learning rate", "pipeline/tasks.sbatch", "L) LR=3e-4", "L) LR=3e-3", ["pretrain_L"]),
     ("changed memory request", "pipeline/run.sh", "--mem=64G --time=06:00:00", "--mem=32G --time=06:00:00", []),
     ("#SBATCH directive in tasks.sbatch", "pipeline/tasks.sbatch", "#!/bin/bash\n", "#!/bin/bash\n#SBATCH --constraint=__selftest__\n", ["br_sim_hom"]),
+    ("merged script without its selector", "pipeline/tasks.sbatch", "  export XD_CAP\n  md5sum $X/xd_boot.py", "  unset XD_CAP\n  md5sum $X/xd_boot.py", ["xd_boot_M"]),
     ("export mode NONE", "pipeline/run.sh", "D_PRIO=$(submit data_prio --account=open", "D_PRIO=$(submit data_prio --export=NONE --account=open", ["data_prio"]),
 ]
 

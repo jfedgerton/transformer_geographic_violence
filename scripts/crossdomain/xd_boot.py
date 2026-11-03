@@ -1,4 +1,10 @@
-"""xd_m_boot.py (2026-10-25) -- copy of xd_c4_boot.py (9d7877fa) for the M Americas-held-out encoder (Jared: main size M).
+"""xd_boot.py (2026-11-03, Phase 2 consolidation) -- merges xd_m_boot.py and xd_s_boot.py (tag v5-as-run), which were
+identical apart from the config list, the output name and the final marker. XD_CAP selects the size:
+  XD_CAP=M : configs C0_L, C0_M, C1_L, C1_M -> outputs/crossdomain/xd_m_boot.csv, verdicts C0_L and C0_M, prints XM_DONE
+  XD_CAP=S : configs C0_S, C1_S             -> outputs/crossdomain/xd_s_boot.csv, verdict  C0_S,        prints XS_DONE
+Everything else is unchanged from xd_m_boot.py (docstring kept below).
+Parity: pipeline/tests/parity_phase2.py runs old and new on the same inputs; outputs must be byte-identical.
+xd_m_boot.py (2026-10-25) -- copy of xd_c4_boot.py (9d7877fa) for the M Americas-held-out encoder (Jared: main size M).
 Configs: C0 finetune 1% rich and C1 nested paper base, L (as run) and M (_capM). Writes outputs/crossdomain/xd_m_boot.csv.
 xd_c4_boot.py docstring follows.
 xd_c4_boot.py (2026-10-24) -- bootstrap for C0 (pre-registered, as run) and C4 (corrected construction), with the
@@ -28,10 +34,23 @@ def unit_dev(y, mu):
 
 FT = [("scratch", "top2"), ("top2_rand", "top2"), ("scratch", "full"), ("scratch", "top2_rand")]
 NE = [("base", "emb_base"), ("rand_emb_base", "emb_base"), ("base", "rand_emb_base")]
-CONFIGS = [("C0_L", "finetune", "finetune_americas_s{S}_rich_f0.01", [0.01], FT),
-           ("C0_M", "finetune", "finetune_americas_s{S}_rich_f0.01_capM", [0.01], FT),
-           ("C1_L", "nested", "nested_americas_s{S}_rich_bpaper", [0.0025, 0.01, 0.05, 0.1, 1.0], NE),
-           ("C1_M", "nested", "nested_americas_s{S}_rich_bpaper_capM", [0.0025, 0.01, 0.05, 0.1, 1.0], NE)]
+CAP = os.environ.get("XD_CAP", "")
+if CAP == "M":
+    CONFIGS = [("C0_L", "finetune", "finetune_americas_s{S}_rich_f0.01", [0.01], FT),
+               ("C0_M", "finetune", "finetune_americas_s{S}_rich_f0.01_capM", [0.01], FT),
+               ("C1_L", "nested", "nested_americas_s{S}_rich_bpaper", [0.0025, 0.01, 0.05, 0.1, 1.0], NE),
+               ("C1_M", "nested", "nested_americas_s{S}_rich_bpaper_capM", [0.0025, 0.01, 0.05, 0.1, 1.0], NE)]
+    OUT_CSV = "xd_m_boot.csv"
+    VERDICTS = [("C0_L", "finetune_americas_rich_f0.01"), ("C0_M", "finetune_americas_rich_f0.01_capM")]
+    DONE = "XM_DONE"
+elif CAP == "S":
+    CONFIGS = [("C0_S", "finetune", "finetune_americas_s{S}_rich_f0.01_capS", [0.01], FT),
+               ("C1_S", "nested", "nested_americas_s{S}_rich_bpaper_capS", [0.0025, 0.01, 0.05, 0.1, 1.0], NE)]
+    OUT_CSV = "xd_s_boot.csv"
+    VERDICTS = [("C0_S", "finetune_americas_rich_f0.01_capS")]
+    DONE = "XS_DONE"
+else:
+    raise SystemExit("set XD_CAP=M or XD_CAP=S")
 rows = []
 q = lambda x: (float(np.quantile(x, 0.025)), float(np.quantile(x, 0.975)))
 for rung, arm, stem, shares, contrasts in CONFIGS:
@@ -76,10 +95,10 @@ for rung, arm, stem, shares, contrasts in CONFIGS:
                              ci_2way_lo=q(b2)[0], ci_2way_hi=q(b2)[1], ub_below_sesoi=bool(q(b2)[1] < SESOI),
                              per_seed=per_seed))
 out = pd.DataFrame(rows)
-out.to_csv(f"{D}/xd_m_boot.csv", index=False)
+out.to_csv(f"{D}/{OUT_CSV}", index=False)
 pd.set_option("display.width", 250); pd.set_option("display.max_columns", 30)
 print(out.drop(columns=[c for c in ["per_seed"] if c in out]).round(4).to_string(index=False))
-for rung, cfg in [("C0_L", "finetune_americas_rich_f0.01"), ("C0_M", "finetune_americas_rich_f0.01_capM")]:
+for rung, cfg in VERDICTS:
     h = out[(out.config == cfg) & (out.baseline == "scratch") & (out.model == "top2")]
     r = out[(out.config == cfg) & (out.baseline == "top2_rand") & (out.model == "top2")]
     if len(h) != 1 or len(r) != 1 or h.iloc[0].status != "complete" or r.iloc[0].status != "complete":
@@ -89,4 +108,4 @@ for rung, cfg in [("C0_L", "finetune_americas_rich_f0.01"), ("C0_M", "finetune_a
     print(f"VERDICT {rung} {cfg}: {'TRANSFER' if all(ok) else 'NO TRANSFER (pre-registered rule)'} | "
           f"top2 vs scratch {h.rel_reduction:+.4f} cell[{h.ci_cell_lo:+.4f},{h.ci_cell_hi:+.4f}] 2way[{h.ci_2way_lo:+.4f},{h.ci_2way_hi:+.4f}] | "
           f"top2 vs top2_rand {r.rel_reduction:+.4f} 2way[{r.ci_2way_lo:+.4f},{r.ci_2way_hi:+.4f}] | (a,b,c)={tuple(bool(x) for x in ok)}")
-print("XM_DONE")
+print(DONE)

@@ -304,7 +304,7 @@ run_07() {
 #   M      : homicide headline (fine-tune 1%, nested) + nested placebos traffic/suicide/drowning (Fig 6, Fig 16, Table 10,
 #            App B, T.3, T.4); bootstraps xd_m_boot.csv, xd_placebo_boot_v3M.csv
 #   L      : Table 20 / T.4 L column, from the two earliest grid versions, exactly as run (xd_L_c0 = xd_grid_brazil.py
-#            ft_rich tasks 1,5,9; xd_L_c1 = xd_grid_brazil_v2.py c_nested tasks 0-2). xd_m_boot.py reads both.
+#            ft_rich tasks 1,5,9; xd_L_c1 = xd_grid_brazil_v2.py c_nested tasks 0-2). xd_boot.py (XD_CAP=M) reads both.
 #   S      : homicide headline (Table 20, T.4); bootstrap xd_s_boot.csv
 # Not run (not reported): thinned-homicide panels, c4/geo placebo jobsets, the S placebo grid. xd_placebo_boot_v3M.py writes
 # INCOMPLETE rows for those comparisons; Fig 6 and Fig 16 use only the complete nested_americas_rich_bpaper_capM rows.

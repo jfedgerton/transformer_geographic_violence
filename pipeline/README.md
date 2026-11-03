@@ -82,6 +82,21 @@ Seeds: encoders 123, 456, 789; XGBoost, training-share draws and bootstraps use 
     rate, a changed memory request, a `#SBATCH` line in `tasks.sbatch` and an `--export=NONE` submission are each caught.
   - not covered: stage 00 (run by every DRY run), login-shell profiles, the analysis scripts themselves (unchanged).
 
+## Phase 2: merged post-processing scripts
+
+Each merge replaces scripts that differed only by a setting with one script. Proof: `pipeline/tests/parity_phase2.py
+<case>` (run on Roar; needs the real inputs) runs the old scripts from tag `v5-as-run` and the new script on the same
+inputs in a scratch folder; outputs and stdout must be byte-identical. The Phase 1 test maps each merged script back to
+the scripts it replaced (`PHASE2_MAP`) and requires the merged call, with its selector, to be present.
+
+| Merged script | Replaces | Selector | Parity (Roar) |
+|---|---|---|---|
+| `scripts/crossdomain/xd_boot.py` | `xd_m_boot.py`, `xd_s_boot.py` | `XD_CAP=M` / `S` | job 56955161: both outputs and stdout byte-identical |
+
+Note: rerunning the unchanged old Brazil bootstrap today reproduces the published `xd_m_boot.csv`/`xd_s_boot.csv` values
+exactly except in the last printed digits (largest difference about 1e-16; likely floating-point summation order, not verified); reported
+values are unaffected.
+
 ## Requirements
 
 - Slurm cluster. GPU stages use A100, A40 or P100 GPUs as set in `run.sh`. CPU stages use the `open` account where possible.
