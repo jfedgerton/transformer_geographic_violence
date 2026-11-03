@@ -1,1 +1,0 @@
-../scripts/phase4_scaling/cmp_random_v2.py

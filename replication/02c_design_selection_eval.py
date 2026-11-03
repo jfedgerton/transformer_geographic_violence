@@ -1,1 +1,0 @@
-../scripts/phase4_scaling/transfer_eval_full.py

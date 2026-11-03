@@ -56,7 +56,7 @@ while todo:
                     todo.append(cand); why.setdefault(cand, rel)
 LOOP = ["scripts/%s.py" % x for x in "01_ingest_acled 01b_ingest_ucdp 01c_merge_sources 02_build_grid 03_aggregate_location_month 04_build_sequences".split()]  # rebuild_pipeline.sbatch loop
 for rel in LOOP:
-    todo.append(rel); why.setdefault(rel, "scripts/rebuild_pipeline.sbatch (loop)")
+    todo.append(rel); why.setdefault(rel, "pipeline/tasks.sbatch (rebuild loop)")
 while todo:
     rel = todo.pop()
     if rel in seen: continue

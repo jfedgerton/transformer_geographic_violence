@@ -1,1 +1,0 @@
-../scripts/phase4_scaling/alert_profile.py

@@ -8,12 +8,12 @@ pipeline/tasks.sbatch,263f0e99f3b8dc9dde0a49896706fad4,20293,driver,pipeline/run
 pipeline/tests/parity_phase1.py,30481513dfa94a7444cca71695cf5dd9,23438,driver,"extra (config, provenance, tools)"
 pipeline/tests/v5_baseline_blobs.txt,732d4db209ed0119709d3a2a3f932c8c,4359,driver,"extra (config, provenance, tools)"
 scripts/00_master.py,2d8f238269d02455c9d38a21a7a565bc,9761,script,pipeline/run.sh
-scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,scripts/rebuild_pipeline.sbatch (loop)
-scripts/01b_ingest_ucdp.py,f54f8f35dde03523eb736775be790227,10781,script,scripts/rebuild_pipeline.sbatch (loop)
-scripts/01c_merge_sources.py,79494b32fdf9be3312c3f47e9975c01b,5413,script,scripts/rebuild_pipeline.sbatch (loop)
-scripts/02_build_grid.py,58381c266df4c568aa0b865775f6423e,5862,script,scripts/rebuild_pipeline.sbatch (loop)
-scripts/03_aggregate_location_month.py,0709e8f53eabe51ed4954dea0377389e,7956,script,scripts/rebuild_pipeline.sbatch (loop)
-scripts/04_build_sequences.py,b41ab318907b1a9df08341ffd80f1f7c,13292,script,scripts/rebuild_pipeline.sbatch (loop)
+scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,pipeline/tasks.sbatch (rebuild loop)
+scripts/01b_ingest_ucdp.py,f54f8f35dde03523eb736775be790227,10781,script,pipeline/tasks.sbatch (rebuild loop)
+scripts/01c_merge_sources.py,79494b32fdf9be3312c3f47e9975c01b,5413,script,pipeline/tasks.sbatch (rebuild loop)
+scripts/02_build_grid.py,58381c266df4c568aa0b865775f6423e,5862,script,pipeline/tasks.sbatch (rebuild loop)
+scripts/03_aggregate_location_month.py,0709e8f53eabe51ed4954dea0377389e,7956,script,pipeline/tasks.sbatch (rebuild loop)
+scripts/04_build_sequences.py,b41ab318907b1a9df08341ffd80f1f7c,13292,script,pipeline/tasks.sbatch (rebuild loop)
 scripts/05_build_baseline_features.py,705bcf3c7046d50875f6e6f79bd950ea,16280,script,pipeline/tasks.sbatch
 scripts/build_pgm_fatalities_target.py,d61e4545cd4c53fa609fb7f718812594,1517,script,pipeline/run.sh
 scripts/build_priogrid_static.py,facec2e971add70b22de3d5fcff1b529,1834,script,pipeline/run.sh
@@ -76,5 +76,5 @@ scripts/replication_v5/fig_random_encoder.R,2cac05ab912b0f8c1d290a6afea34e82,646
 scripts/replication_v5/fig_share_curve.R,09b6bdd1f028e69e62fe4dbc617fcf3d,4205,new_v5,pipeline/run.sh
 scripts/replication_v5/fig_share_regions.R,c570eb04aa21f80b071a67deae52479e,4815,new_v5,pipeline/run.sh
 scripts/replication_v5/fig_ukraine_alert_gain_arm.R,676adf1948d0d64a9d4c0d88aa57112d,8737,new_v5,pipeline/run.sh
-scripts/replication_v5/make_manifest.py,97f053b51a9704dd3892c7f9d47e1d54,4746,new_v5,"extra (config, provenance, tools)"
+scripts/replication_v5/make_manifest.py,956ecf603630de530a0bd8494561d59b,4744,new_v5,"extra (config, provenance, tools)"
 scripts/replication_v5/make_tables.py,25cb0eff54365381b04bd605c5e89051,48297,new_v5,pipeline/run.sh
