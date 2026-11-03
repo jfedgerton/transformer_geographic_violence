@@ -2,11 +2,11 @@ path,md5,bytes,role,first_referenced_by
 env/requirements_frozen_2026-10-19.txt,b912b48924f93bf4c547c1a6b91574c6,1403,config,"extra (config, provenance, tools)"
 env/versions_2026-10-19.txt,9e2e62d309694b7a45150f6bed2ddbfc,94,config,"extra (config, provenance, tools)"
 figures_tables/fig_cell_alerts.R,21f619353af54abe813fa58abbf60e86,48841,script,pipeline/tasks.sbatch
-pipeline/README.md,164b2ad69164d67bf702aaa996c10002,11449,driver,"extra (config, provenance, tools)"
+pipeline/README.md,bfe3eb54fddd282ec2c517856d7c1716,12120,driver,"extra (config, provenance, tools)"
 pipeline/run.sh,c06f790f49052e55c32e7822b1394ea3,32189,driver,pipeline/run.sh
-pipeline/tasks.sbatch,c77e37ba232cbeb83c92104c5f4e70e4,20391,driver,pipeline/run.sh
-pipeline/tests/parity_phase1.py,e3a467945a8772e83b79c25e37eb4036,29979,driver,"extra (config, provenance, tools)"
-pipeline/tests/parity_phase2.py,c223d6ff598e3d9afd1dd72fac63f17c,11858,driver,"extra (config, provenance, tools)"
+pipeline/tasks.sbatch,7482758125f17e55e57b69bdd51f4b2a,20505,driver,pipeline/run.sh
+pipeline/tests/parity_phase1.py,dc08958a5ec8a39e351b8beb60965120,30585,driver,"extra (config, provenance, tools)"
+pipeline/tests/parity_phase2.py,c7e7637b48e086b1049f6e63c5240716,14114,driver,"extra (config, provenance, tools)"
 pipeline/tests/v5_baseline_blobs.txt,732d4db209ed0119709d3a2a3f932c8c,4359,driver,"extra (config, provenance, tools)"
 scripts/00_master.py,2d8f238269d02455c9d38a21a7a565bc,9761,script,pipeline/run.sh
 scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,pipeline/tasks.sbatch (rebuild loop)
@@ -23,9 +23,7 @@ scripts/crossdomain/build_brazil_panel.py,c297de242eb9c9929081838fc5b394a7,13041
 scripts/crossdomain/build_brazil_placebo_panel.py,f34043849651bf16e0463502d8a025ee,14084,script,pipeline/tasks.sbatch
 scripts/crossdomain/build_brazil_traffic_panel.py,ab00d170dbd744d0d8998989cf5826fb,13711,script,pipeline/tasks.sbatch
 scripts/crossdomain/fetch_sim_dores.sh,c501d82609b341f311ebeb1ed5824796,1041,launcher,pipeline/run.sh
-scripts/crossdomain/prep_sim_homicide.py,70224ba9130fb3a82fa9583e4ec94913,3567,script,pipeline/tasks.sbatch
-scripts/crossdomain/prep_sim_placebos_v2.py,d9b7cf57ac325ca7f3b29255bfaa5094,4018,script,pipeline/tasks.sbatch
-scripts/crossdomain/prep_sim_traffic.py,1379a9483fd9c861853a33465f4b788e,4027,script,pipeline/tasks.sbatch
+scripts/crossdomain/prep_sim.py,5dd18f234b45c169aef61846f18eab7c,11025,script,pipeline/tasks.sbatch
 scripts/crossdomain/xd_boot.py,b60c363a569381c20d86bcef78a2a85a,7893,script,pipeline/tasks.sbatch
 scripts/crossdomain/xd_grid_brazil.py,4f412c3c2991f0412148fbe0855ed44f,22751,script,pipeline/tasks.sbatch
 scripts/crossdomain/xd_grid_brazil_v2.py,357895448f9b4ef6e510a8d924283eee,30112,script,pipeline/tasks.sbatch

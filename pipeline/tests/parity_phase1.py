@@ -304,6 +304,9 @@ def run_body(row, idx, mode, jobname):
 PHASE2_MAP = {
     "xd_boot_M": [("scripts/crossdomain/xd_boot.py", "scripts/crossdomain/xd_m_boot.py"), ("  ENV XD_CAP=M\n", "")],
     "xd_boot_S": [("scripts/crossdomain/xd_boot.py", "scripts/crossdomain/xd_s_boot.py"), ("  ENV XD_CAP=S\n", "")],
+    "br_sim_hom": [("scripts/crossdomain/prep_sim.py", "scripts/crossdomain/prep_sim_homicide.py"), ("  ENV XD_CAUSE=homicide\n", "")],
+    "br_traffic": [("scripts/crossdomain/prep_sim.py", "scripts/crossdomain/prep_sim_traffic.py"), ("  ENV XD_CAUSE=traffic\n", "")],
+    "br_placebos": [("scripts/crossdomain/prep_sim.py", "scripts/crossdomain/prep_sim_placebos_v2.py"), ("  ENV XD_CAUSE=placebos\n", "")],
 }
 def phase2_normalize(job, trace, mode):
     for a, b in PHASE2_MAP.get(job, []):
@@ -434,6 +437,7 @@ MUTATIONS = [  # (name, file, old text, new text, bodies to run)
     ("merged script without its selector", "pipeline/tasks.sbatch", "  export XD_CAP\n  md5sum $X/xd_boot.py", "  unset XD_CAP\n  md5sum $X/xd_boot.py", ["xd_boot_M"]),
     ("merged figures script without the root argument", "pipeline/run.sh", "Rscript $V/figures.R $FO $ROOT", "Rscript $V/figures.R $FO", ["figures"]),
     ("merged Sudan script replaced by its first step", "pipeline/run.sh", '"venv/bin/python $P/sudan_cells.py"', '"venv/bin/python $P/audit_cells_export.py"', ["sudan_cells_keep"]),
+    ("merged SIM prep with the wrong cause", "pipeline/tasks.sbatch", "XD_CAUSE=homicide venv_xd/bin/python $X/prep_sim.py", "XD_CAUSE=traffic venv_xd/bin/python $X/prep_sim.py", ["br_sim_hom"]),
     ("export mode NONE", "pipeline/run.sh", "D_PRIO=$(submit data_prio --account=open", "D_PRIO=$(submit data_prio --export=NONE --account=open", ["data_prio"]),
 ]
 

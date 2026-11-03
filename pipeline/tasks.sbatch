@@ -265,9 +265,9 @@ domain_grid)        # was launch_grid_domain.sbatch
   python $P/share_grid_domain.py ;;
 
 # ================= stage 08: Brazil =================
-br_sim_hom)         # was crossdomain/launch_prep_sim.sbatch
-  md5sum $X/prep_sim_homicide.py
-  venv_xd/bin/python $X/prep_sim_homicide.py
+br_sim_hom)         # was crossdomain/launch_prep_sim.sbatch (prep_sim.py was prep_sim_homicide.py)
+  md5sum $X/prep_sim.py
+  XD_CAUSE=homicide venv_xd/bin/python $X/prep_sim.py
   echo SIMPREP_DONE ;;
 
 br_panel_hom)       # was crossdomain/launch_brazil_panel.sbatch
@@ -275,16 +275,16 @@ br_panel_hom)       # was crossdomain/launch_brazil_panel.sbatch
   venv/bin/python $X/build_brazil_panel.py
   echo BRPANEL_DONE ;;
 
-br_traffic)         # was crossdomain/launch_sim_traffic.sbatch
-  md5sum $X/prep_sim_traffic.py $X/build_brazil_traffic_panel.py
-  venv_xd/bin/python $X/prep_sim_traffic.py
+br_traffic)         # was crossdomain/launch_sim_traffic.sbatch (prep_sim.py was prep_sim_traffic.py)
+  md5sum $X/prep_sim.py $X/build_brazil_traffic_panel.py
+  XD_CAUSE=traffic venv_xd/bin/python $X/prep_sim.py
   echo TRAFPREP_DONE
   venv/bin/python $X/build_brazil_traffic_panel.py
   echo TRAFPANEL_DONE ;;
 
-br_placebos)        # was crossdomain/launch_xd_placebos_prep_v2.sbatch
-  md5sum $X/prep_sim_placebos_v2.py $X/build_brazil_placebo_panel.py $X/xd_profile_causes.py
-  venv_xd/bin/python $X/prep_sim_placebos_v2.py
+br_placebos)        # was crossdomain/launch_xd_placebos_prep_v2.sbatch (prep_sim.py was prep_sim_placebos_v2.py)
+  md5sum $X/prep_sim.py $X/build_brazil_placebo_panel.py $X/xd_profile_causes.py
+  XD_CAUSE=placebos venv_xd/bin/python $X/prep_sim.py
   echo PLPREP_DONE
   for c in suicide drowning dengue; do XD_PLACEBO=$c venv/bin/python $X/build_brazil_placebo_panel.py; echo "PANEL_DONE $c"; done
   venv/bin/python $X/xd_profile_causes.py ;;

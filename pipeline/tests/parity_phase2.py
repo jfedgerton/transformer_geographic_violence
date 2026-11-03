@@ -11,19 +11,22 @@ relative paths, outputs are written only there. Nothing in the project tree is w
 inputs, so run it on Roar, e.g.
   sbatch --account=open --mem=16G --time=01:00:00 -o logs/parity_p2_%j.out \\
          --wrap "cd <root> && module load anaconda && module load r && venv/bin/python pipeline/tests/parity_phase2.py figures"
-Cases: xd_boot, sudan, figures.  Exit 0 only if every case run is PARITY2_OK."""
+Cases: xd_boot, sudan, figures, sim_prep; a single run is selected with case:label (e.g. sim_prep:traffic).  Exit 0 only if every case run is PARITY2_OK."""
 import os, re, sys, glob, shutil, hashlib, subprocess, tempfile, difflib
 
 ROOT = "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast"
 V5_COMMIT = "b3ed0e0c28e34fd49dc431d93b45ea1e4a3e7743"
 PY = f"{ROOT}/venv/bin/python"
+PYXD = f"{ROOT}/venv_xd/bin/python"   # adds pyreaddbc for the SIM .dbc files
 P, X, V = "scripts/phase4_scaling", "scripts/crossdomain", "scripts/replication_v5"
 NE_ZIP = "data_raw/shapefiles/ne_50m_admin_0/ne_50m_admin_0_countries.zip"
 FO = "figures_tables/v5"
 
 # A case is a list of runs. Run fields:
 #   label; mode "envdir" (inputs linked flat into the run dir, whose path goes in env var `dirvar`; cwd = ROOT) or
-#   "cwd" (inputs linked at their relative paths, cwd = run dir); inputs (globs relative to ROOT); mkdirs (relative,
+#   "cwd" (inputs linked at their relative paths, cwd = run dir); "rootrw" (inputs linked at their relative paths, and
+#   both the old and the new script are run from copies whose hard-coded `R = "<project root>"` line points at the run
+#   dir, the only change, so outputs land there); "outdir" (env XD_OUTDIR = run dir, inputs read from the project); inputs (globs relative to ROOT); mkdirs (relative,
 #   created before the run); old: list of commands ({OLD} = tag copy of scripts, {D} = run dir); new: same with {NEW} =
 #   project scripts; env: extra environment for both; outputs: relative files, or a directory to compare recursively;
 #   published: True if outputs/<same path> in ROOT is the copy the paper uses; stdout: compare stdout.
@@ -69,6 +72,17 @@ CASES = {
              new=[["Rscript", f"{{NEW}}/{V}/figures.R", FO, "{D}"]],
              new_mkdirs_only=[FO],          # figures.R creates its own sub-folders
              outputs=[FO], published=None, stdout=False),
+    ],
+    "sim_prep": [
+        dict(label=c, mode="rootrw", inputs=["data_raw/sim_brazil/dores/DOBR*.dbc"], mkdirs=["data_intermediate"],
+             old=[[PYXD, f"{{OLD}}/{X}/prep_sim_{c}.py"]], new=[[PYXD, f"{{NEW}}/{X}/prep_sim.py"]], env_new={"XD_CAUSE": c},
+             outputs=[f"data_intermediate/sim_{c}_events.parquet", "outputs/crossdomain/" + aud], published=".", stdout=True)
+        for c, aud in (("homicide", "sim_year_audit.csv"), ("traffic", "sim_traffic_year_audit.csv"))
+    ] + [
+        dict(label="placebos", mode="rootrw", inputs=["data_raw/sim_brazil/dores/DOBR*.dbc"], mkdirs=["data_intermediate", "outputs/crossdomain"],
+             old=[[PYXD, f"{{OLD}}/{X}/prep_sim_placebos_v2.py"]], new=[[PYXD, f"{{NEW}}/{X}/prep_sim.py"]], env_new={"XD_CAUSE": "placebos"},
+             outputs=[f"data_intermediate/sim_{c}_events.parquet" for c in ("suicide", "drowning", "dengue")]
+                     + ["outputs/crossdomain/sim_placebos_year_audit_v2.csv"], published=".", stdout=True)
     ],
 }
 ENV_R = {"R_PROFILE_USER": f"{ROOT}/{P}/Rprofile_cairo"}   # as the old wrapped CPU jobs set it
@@ -116,21 +130,27 @@ def files_under(d, outs):
 
 def run_side(W, run, side):
     d = os.path.join(W, f"{run['label']}_{side}"); os.makedirs(d)
-    n = link_inputs(d, run["inputs"], flat=(run["mode"] == "envdir"))
+    n = link_inputs(d, run["inputs"], flat=(run["mode"] == "envdir")) if run["inputs"] else 0
     for m in (run.get("new_mkdirs_only") if side == "new" and run.get("new_mkdirs_only") is not None else run["mkdirs"]):
         os.makedirs(os.path.join(d, m), exist_ok=True)
-    env = dict(os.environ); env.update(ENV_R); env.update(run.get("env_new", {}) if side == "new" else {})
-    cwd = d if run["mode"] == "cwd" else ROOT
+    env = dict(os.environ); env.update(ENV_R); env.update(run.get("env_new", {}) if side == "new" else run.get("env_old", {}))
+    cwd = d if run["mode"] in ("cwd", "rootrw") else ROOT
     if run["mode"] == "envdir": env[run["dirvar"]] = d
+    if run["mode"] == "outdir": env["XD_OUTDIR"] = d
     out, rc = "", 0
     for cmd in run[side]:
         c = []
         for a in cmd:
             if "{OLD}" in a: a = old_copy(W, a.replace("{OLD}/", ""))
             a = a.replace("{NEW}", ROOT).replace("{D}", d)
+            if run["mode"] == "rootrw" and a.endswith(".py"):
+                t = open(a).read(); line = f'R = "{ROOT}"\n'
+                assert t.count(line) >= 1, f"{a}: hard-coded root line not found"
+                a2 = os.path.join(W, f"rw_{run['label']}_{side}_" + os.path.basename(a))
+                open(a2, "w").write(t.replace(line, f'R = "{d}"\n')); a = a2
             c.append(a)
         p = subprocess.run(c, cwd=cwd, env=env, capture_output=True, text=True)
-        out += p.stdout
+        out += p.stdout.replace(d, "<RUNDIR>")
         print(f"  [{run['label']}/{side}] {os.path.basename(c[1])} rc={p.returncode}", flush=True)
         if p.returncode:
             print(p.stdout[-1500:], p.stderr[-3000:], flush=True); rc = p.returncode; break
@@ -150,7 +170,11 @@ def fig3_diagnostic(W):
 
 
 def main(cases):
-    for c in cases: assert c in CASES, f"unknown case {c}; known: {sorted(CASES)}"
+    only = {}
+    for i, c in enumerate(cases):
+        if ":" in c: c, lab = c.split(":"); only[c] = lab; cases[i] = c
+        assert c in CASES, f"unknown case {c}; known: {sorted(CASES)}"
+        assert c not in only or only[c] in [r["label"] for r in CASES[c]], f"unknown label {only.get(c)} for case {c}"
     c = subprocess.run(["git", "-C", ROOT, "rev-parse", "v5-as-run^{commit}"], capture_output=True, text=True).stdout.strip()
     assert c == V5_COMMIT, f"tag v5-as-run resolves to '{c}', expected {V5_COMMIT}"
     W = tempfile.mkdtemp(prefix="parity_p2_", dir=os.environ.get("TMPDIR", "/tmp"))
@@ -162,6 +186,7 @@ def main(cases):
             ok = True
             if case == "figures": fig3_diagnostic(W)
             for run in CASES[case]:
+                if case in only and run["label"] != only[case]: continue
                 do, ro, so, n = run_side(W, run, "old")
                 dn, rn, sn, _ = run_side(W, run, "new")
                 print(f"[{run['label']}] inputs linked: {n}", flush=True)
