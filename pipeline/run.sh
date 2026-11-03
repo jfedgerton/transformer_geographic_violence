@@ -365,16 +365,7 @@ run_09() {
   D=$(ids $D_BOOT $D_ALERT $D_UKR $D_DOM $D_BRBOOT $D_PERS)
   wrapcpu figures 16G 01:00:00 "$D" \
     "test -f outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc_print_opt4b_countries_wide.png || { echo FIG19_MISSING_stage06_skipped_fig_cell_alerts.R; exit 1; }; mkdir -p $FO; \
-     Rscript $P/fig_loro_gains_v2.R outputs/bootstrap_ci_M_fullsrc_block5.csv $FO/fig3_loro_gains; \
-     mkdir -p $FO/fig4_cell_maps; Rscript $V/fig_cell_maps.R outputs/cell_alerts_persistence_M_fullsrc.csv.gz outputs/cell_alerts_incidence_M_fullsrc.csv.gz $NE_ZIP $FO/fig4_cell_maps; \
-     mkdir -p $FO/fig5_finetune_gains; Rscript $P/fig_finetune_gains.R outputs/bootstrap_ft_fullsrc_M_full_block5.csv $FO/fig5_finetune_gains; \
-     mkdir -p $FO/fig6_brazil; Rscript $P/fig_placebo_gradient_a_only_nolabel.R outputs/crossdomain/xd_placebo_boot_v3M.csv $FO/fig6_brazil; \
-     mkdir -p $FO/fig9_random_encoder $FO/fig10_share_curve $FO/fig17_share_regions $FO/fig18_persistence_gap $FO/fig16_brazil_random; \
-     Rscript $V/fig_random_encoder.R $FO/fig9_random_encoder $ROOT; \
-     Rscript $V/fig_share_curve.R $FO/fig10_share_curve $ROOT; \
-     Rscript $P/fig_placebo_gradient.R outputs/crossdomain/xd_placebo_boot_v3M.csv $FO/fig16_brazil_random; \
-     Rscript $V/fig_share_regions.R $FO/fig17_share_regions $ROOT; \
-     Rscript $V/fig_persistence_gap.R $FO/fig18_persistence_gap $ROOT" >/dev/null
+     Rscript $V/figures.R $FO $ROOT" >/dev/null
   wrapcpu tables 8G 00:30:00 "$D" "TABLES_ROOT=$ROOT venv/bin/python $V/make_tables.py --ukraine-full" >/dev/null
 }
 

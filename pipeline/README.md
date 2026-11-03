@@ -95,9 +95,14 @@ to be present.
 |---|---|---|---|
 | `scripts/crossdomain/xd_boot.py` | `xd_m_boot.py`, `xd_s_boot.py` | `XD_CAP=M` / `S` | job 56955161: both outputs and stdout byte-identical |
 | `scripts/phase4_scaling/sudan_cells.py` | `audit_cells_export.py`, `audit_cell_country.R` (embedded verbatim, run with `Rscript`), `sudan_cells_fix.py` | none (runs all three steps) | job 56961249: 4 outputs and stdout byte-identical; outputs equal the published files |
+| `scripts/replication_v5/figures.R` | `fig_loro_gains_v2.R`, `fig_cell_maps.R`, `fig_finetune_gains.R`, `fig_placebo_gradient_a_only_nolabel.R`, `fig_random_encoder.R`, `fig_share_curve.R`, `fig_placebo_gradient.R`, `fig_share_regions.R`, `fig_persistence_gap.R` | optional 3rd argument: figure ids (default all nine) | job 56961250: all 19 figure files identical |
 
 Sudan: `country_slice_fullsrc.py` and `country_window_fullsrc.py` (unchanged analysis scripts) still name the old
 Sudan scripts in a comment; the file they read, `outputs/sudan_cells_keep.csv`, is unchanged.
+
+Figures: each figure's code runs in its own `local()` block with the arguments `run.sh` used to pass; the bodies are the
+old scripts verbatim. The old figures job never created `fig3_loro_gains/` before calling `fig_loro_gains_v2.R`; the
+parity job checked that this call succeeds anyway (rc 0), so it was not a bug.
 
 Note: rerunning the unchanged old Brazil bootstrap today reproduces the published `xd_m_boot.csv`/`xd_s_boot.csv` values
 exactly except in the last printed digits (largest difference about 1e-16; likely floating-point summation order, not verified); reported

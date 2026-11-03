@@ -326,6 +326,29 @@ PHASE2_CHAIN = {
         new_cmd=f"CMD venv/bin/python {_P}/sudan_cells.py",
         old_cmds=[f"CMD venv/bin/python {_P}/audit_cells_export.py", f"CMD Rscript {_P}/audit_cell_country.R",
                   f"CMD venv/bin/python {_P}/sudan_cells_fix.py"]),
+    "figures": dict(
+        new_wrap=f"Rscript {_V}/figures.R {_FO} {{R}}",
+        old_wrap=("; " + " " * 5).join([   # old run.sh lines: inside double quotes bash drops each backslash-newline, keeping the indent
+            f"Rscript {_P}/fig_loro_gains_v2.R outputs/bootstrap_ci_M_fullsrc_block5.csv {_FO}/fig3_loro_gains",
+            f"mkdir -p {_FO}/fig4_cell_maps; Rscript {_V}/fig_cell_maps.R outputs/cell_alerts_persistence_M_fullsrc.csv.gz outputs/cell_alerts_incidence_M_fullsrc.csv.gz {_NE} {_FO}/fig4_cell_maps",
+            f"mkdir -p {_FO}/fig5_finetune_gains; Rscript {_P}/fig_finetune_gains.R outputs/bootstrap_ft_fullsrc_M_full_block5.csv {_FO}/fig5_finetune_gains",
+            f"mkdir -p {_FO}/fig6_brazil; Rscript {_P}/fig_placebo_gradient_a_only_nolabel.R outputs/crossdomain/xd_placebo_boot_v3M.csv {_FO}/fig6_brazil",
+            f"mkdir -p {_FO}/fig9_random_encoder {_FO}/fig10_share_curve {_FO}/fig17_share_regions {_FO}/fig18_persistence_gap {_FO}/fig16_brazil_random",
+            f"Rscript {_V}/fig_random_encoder.R {_FO}/fig9_random_encoder {{R}}",
+            f"Rscript {_V}/fig_share_curve.R {_FO}/fig10_share_curve {{R}}",
+            f"Rscript {_P}/fig_placebo_gradient.R outputs/crossdomain/xd_placebo_boot_v3M.csv {_FO}/fig16_brazil_random",
+            f"Rscript {_V}/fig_share_regions.R {_FO}/fig17_share_regions {{R}}",
+            f"Rscript {_V}/fig_persistence_gap.R {_FO}/fig18_persistence_gap {{R}}"]),
+        new_cmd=f"CMD Rscript {_V}/figures.R {_FO} {{R}}",
+        old_cmds=[f"CMD Rscript {_P}/fig_loro_gains_v2.R outputs/bootstrap_ci_M_fullsrc_block5.csv {_FO}/fig3_loro_gains",
+                  f"CMD Rscript {_V}/fig_cell_maps.R outputs/cell_alerts_persistence_M_fullsrc.csv.gz outputs/cell_alerts_incidence_M_fullsrc.csv.gz {_NE} {_FO}/fig4_cell_maps",
+                  f"CMD Rscript {_P}/fig_finetune_gains.R outputs/bootstrap_ft_fullsrc_M_full_block5.csv {_FO}/fig5_finetune_gains",
+                  f"CMD Rscript {_P}/fig_placebo_gradient_a_only_nolabel.R outputs/crossdomain/xd_placebo_boot_v3M.csv {_FO}/fig6_brazil",
+                  f"CMD Rscript {_V}/fig_random_encoder.R {_FO}/fig9_random_encoder {{R}}",
+                  f"CMD Rscript {_V}/fig_share_curve.R {_FO}/fig10_share_curve {{R}}",
+                  f"CMD Rscript {_P}/fig_placebo_gradient.R outputs/crossdomain/xd_placebo_boot_v3M.csv {_FO}/fig16_brazil_random",
+                  f"CMD Rscript {_V}/fig_share_regions.R {_FO}/fig17_share_regions {{R}}",
+                  f"CMD Rscript {_V}/fig_persistence_gap.R {_FO}/fig18_persistence_gap {{R}}"]),
 }
 def chain_wrap(job, wrap):
     """new --wrap -> what the old --wrap should be (unchanged if the job has no chain merge)."""
@@ -409,6 +432,7 @@ MUTATIONS = [  # (name, file, old text, new text, bodies to run)
     ("changed memory request", "pipeline/run.sh", "--mem=64G --time=06:00:00", "--mem=32G --time=06:00:00", []),
     ("#SBATCH directive in tasks.sbatch", "pipeline/tasks.sbatch", "#!/bin/bash\n", "#!/bin/bash\n#SBATCH --constraint=__selftest__\n", ["br_sim_hom"]),
     ("merged script without its selector", "pipeline/tasks.sbatch", "  export XD_CAP\n  md5sum $X/xd_boot.py", "  unset XD_CAP\n  md5sum $X/xd_boot.py", ["xd_boot_M"]),
+    ("merged figures script without the root argument", "pipeline/run.sh", "Rscript $V/figures.R $FO $ROOT", "Rscript $V/figures.R $FO", ["figures"]),
     ("merged Sudan script replaced by its first step", "pipeline/run.sh", '"venv/bin/python $P/sudan_cells.py"', '"venv/bin/python $P/audit_cells_export.py"', ["sudan_cells_keep"]),
     ("export mode NONE", "pipeline/run.sh", "D_PRIO=$(submit data_prio --account=open", "D_PRIO=$(submit data_prio --export=NONE --account=open", ["data_prio"]),
 ]
