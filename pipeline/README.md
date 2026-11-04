@@ -110,6 +110,14 @@ SIM prep: the parity test runs both the old and the new script from copies whose
 scratch folder (the scripts have no output-folder setting); nothing else in them changes. In homicide mode the merged
 script also runs the traffic code filter's self-check (no effect on outputs).
 
+Output inventory (added after the Codex review of Phase 2). Each run must write exactly its declared files on both
+sides. A declared file missing on either side, or any undeclared file, fails the case; `parity_phase2.py --selftest`
+checks the gate with negative controls before every run. The gate found one undeclared file, `Rplots.pdf`, which R
+writes into the working directory (the project root in production) during the figures step, with the old nine
+scripts as well. It is a blank page. One R session records more empty save/restore pairs than nine separate sessions,
+so its bytes differ; it is now required on both sides and checked to be blank instead of byte-compared.
+Rerun with the gate: jobs 56992171 (xd_boot, sudan, figures), 56991982-56991984 (SIM prep), 56991985 (panels) all PARITY2_OK with no missing or undeclared files; all compared outputs identical.
+
 Note: rerunning the unchanged old Brazil bootstrap today reproduces the published `xd_m_boot.csv`/`xd_s_boot.csv` values
 exactly except in the last printed digits (largest difference about 1e-16; likely floating-point summation order, not verified); reported
 values are unaffected.

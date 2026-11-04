@@ -2,11 +2,11 @@ path,md5,bytes,role,first_referenced_by
 env/requirements_frozen_2026-10-19.txt,b912b48924f93bf4c547c1a6b91574c6,1403,config,"extra (config, provenance, tools)"
 env/versions_2026-10-19.txt,9e2e62d309694b7a45150f6bed2ddbfc,94,config,"extra (config, provenance, tools)"
 figures_tables/fig_cell_alerts.R,21f619353af54abe813fa58abbf60e86,48841,script,pipeline/tasks.sbatch
-pipeline/README.md,f599348146ce6d2fd764f3558e38388d,12446,driver,"extra (config, provenance, tools)"
+pipeline/README.md,124fd1c8131895b22acacdfb13b65336,13320,driver,"extra (config, provenance, tools)"
 pipeline/run.sh,c06f790f49052e55c32e7822b1394ea3,32189,driver,pipeline/run.sh
 pipeline/tasks.sbatch,f3bf91acd6a7f2eea846ec25e04082a8,20552,driver,pipeline/run.sh
 pipeline/tests/parity_phase1.py,5f7fb6b4773986f73334fb9a22ff7873,31379,driver,"extra (config, provenance, tools)"
-pipeline/tests/parity_phase2.py,f97620c58e63cfd0463b1f5332cb0538,15052,driver,"extra (config, provenance, tools)"
+pipeline/tests/parity_phase2.py,6f4397db462a5dfa3871d3ddbe5369af,22626,driver,"extra (config, provenance, tools)"
 pipeline/tests/v5_baseline_blobs.txt,732d4db209ed0119709d3a2a3f932c8c,4359,driver,"extra (config, provenance, tools)"
 scripts/00_master.py,2d8f238269d02455c9d38a21a7a565bc,9761,script,pipeline/run.sh
 scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,pipeline/tasks.sbatch (rebuild loop)

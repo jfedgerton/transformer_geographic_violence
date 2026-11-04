@@ -4,6 +4,10 @@ input files and must write identical outputs. Where the paper uses a published c
 (reported, not required: a rerun may differ in the last digits, see README).
 
 Comparison: byte-identical, except PDFs, which are compared after removing their /CreationDate and /ModDate stamps.
+Inventory (Codex Phase 2 review, P2): every file a run writes into its run directory (regular files, linked inputs
+excluded) must be exactly the declared set (outputs, the pinned `expected` list for a directory output, and any pinned
+`byproducts`), on both sides. A declared file missing on either side, or any undeclared file, fails the case. A built-in
+self-test (also run on its own with --selftest) checks that these failures are caught before any real run.
 stdout is compared where it carries no run-directory paths.
 
 SAFE: every run gets its own scratch directory under $TMPDIR; inputs are symlinked into it (read-only use) at the same
@@ -30,6 +34,16 @@ FO = "figures_tables/v5"
 #   created before the run); old: list of commands ({OLD} = tag copy of scripts, {D} = run dir); new: same with {NEW} =
 #   project scripts; env: extra environment for both; outputs: relative files, or a directory to compare recursively;
 #   published: True if outputs/<same path> in ROOT is the copy the paper uses; stdout: compare stdout.
+FIG_FILES = ["fig3_loro_gains/fig_loro_gains.pdf", "fig3_loro_gains/fig_loro_gains.png", "fig3_loro_gains/tab_loro_gains_ci.tex",
+             "fig4_cell_maps/fig_cell_alerts_maps_pers_nested_M_fullsrc.pdf", "fig4_cell_maps/fig_cell_alerts_maps_pers_nested_M_fullsrc.png",
+             "fig5_finetune_gains/fig_finetune_gains.pdf", "fig5_finetune_gains/fig_finetune_gains.png",
+             "fig6_brazil/fig_placebo_gradient_ab_M.pdf", "fig6_brazil/fig_placebo_gradient_ab_M.png",
+             "fig9_random_encoder/fig_random_encoder.pdf", "fig9_random_encoder/fig_random_encoder.png",
+             "fig10_share_curve/fig_boot_shares.pdf", "fig10_share_curve/fig_boot_shares.png",
+             "fig16_brazil_random/fig_placebo_gradient_M.pdf", "fig16_brazil_random/fig_placebo_gradient_M.png",
+             "fig17_share_regions/fig_boot_share_regions.pdf", "fig17_share_regions/fig_boot_share_regions.png",
+             "fig18_persistence_gap/fig_boot_persistence.pdf", "fig18_persistence_gap/fig_boot_persistence.png"]
+assert len(FIG_FILES) == 19
 CASES = {
     "xd_boot": [
         dict(label="M", mode="envdir", dirvar="XC_DIR", inputs=[f"outputs/crossdomain/preds_brazil_*.npz"], mkdirs=[],
@@ -71,7 +85,13 @@ CASES = {
                   ["Rscript", f"{{OLD}}/{V}/fig_persistence_gap.R", f"{FO}/fig18_persistence_gap", "{D}"]],
              new=[["Rscript", f"{{NEW}}/{V}/figures.R", FO, "{D}"]],
              new_mkdirs_only=[FO],          # figures.R creates its own sub-folders
-             outputs=[FO], published=None, stdout=False),
+             outputs=[FO], expected=[f"{FO}/{x}" for x in FIG_FILES],
+             # R's default-device file in the working directory (the project root in production). The old nine scripts write
+             # it too. It is a blank page: ggplotGrob()/ggplot_build() open the default device and record only empty q/Q
+             # pairs. One R session accumulates more pairs than nine separate ones, so the bytes differ; it is required on
+             # both sides and checked to be blank instead of byte-compared (Roar diagnostic job 56992072).
+             blank_byproducts=["Rplots.pdf"],
+             published=None, stdout=False),
     ],
     "sim_prep": [
         dict(label=c, mode="rootrw", inputs=["data_raw/sim_brazil/dores/DOBR*.dbc"], mkdirs=["data_intermediate"],
@@ -128,16 +148,114 @@ def link_inputs(d, globs, flat):
     return n
 
 
-def files_under(d, outs):
-    got = {}
-    for o in outs:
-        p = os.path.join(d, o)
-        if os.path.isdir(p):
-            for r, _, fs in os.walk(p):
-                for f in fs: got[os.path.relpath(os.path.join(r, f), d)] = os.path.join(r, f)
-        elif os.path.isfile(p):
-            got[o] = p
+def required_files(run):
+    """the exact set of files a run must write: declared file outputs, the pinned list for a directory output, byproducts"""
+    req = set(run.get("byproducts", [])) | set(run.get("blank_byproducts", []))
+    for o in run["outputs"]:
+        if "expected" in run and any(e.startswith(o.rstrip("/") + "/") for e in run["expected"]):
+            req |= {e for e in run["expected"] if e.startswith(o.rstrip("/") + "/")}
+        else:
+            req.add(o)
+    return req
+
+
+def inventory(d):
+    """every regular file written under the run dir; linked inputs (symlinks) are not outputs"""
+    got = set()
+    for r, dirs, fs in os.walk(d):
+        for f in fs:
+            p = os.path.join(r, f)
+            if not os.path.islink(p) and os.path.isfile(p): got.add(os.path.relpath(p, d))
     return got
+
+
+def blank_pdf(path):
+    """True if every page content stream of an R pdf() file holds only line settings and empty save/restore pairs"""
+    import zlib
+    b = open(path, "rb").read()
+    if not b.startswith(b"%PDF"): return False
+    pages = 0
+    for m in re.finditer(rb"<<([^<>]*?)>>\s*stream\r?\n(.*?)endstream", b, re.S):
+        if b"/Length" not in m.group(1) or b"/FlateDecode" not in m.group(1): continue
+        try: t = zlib.decompress(m.group(2))
+        except zlib.error: continue
+        if t.startswith(b"\x00\x00"): continue            # the embedded sRGB ICC profile, not page content
+        pages += 1
+        if re.sub(rb"[\sqQJj01]", b"", t): return False     # anything beyond '1 J 1 j' and q/Q is a drawing
+    return pages >= 1
+
+
+def compare_outputs(do, dn, run, root_for_published=None):
+    """inventory gate, then byte comparison of every required file. Returns (ok, report lines)."""
+    lab, req, lines, ok = run["label"], required_files(run), [], True
+    assert req, f"[{lab}] no declared outputs"
+    for side, d in (("old", do), ("new", dn)):
+        inv = inventory(d)
+        missing, extra = sorted(req - inv), sorted(inv - req)
+        if missing: ok = False; lines.append(f"[{lab}] {side}: DECLARED OUTPUT MISSING {missing}")
+        if extra: ok = False; lines.append(f"[{lab}] {side}: UNDECLARED FILE WRITTEN {extra}")
+    lines.append(f"[{lab}] inventory: {len(req)} declared files")
+    for rel in sorted(run.get("blank_byproducts", [])):
+        bo = os.path.isfile(os.path.join(do, rel)) and blank_pdf(os.path.join(do, rel))
+        bn = os.path.isfile(os.path.join(dn, rel)) and blank_pdf(os.path.join(dn, rel))
+        lines.append(f"[{lab}] {rel}: blank page old {bo}, new {bn} (byproduct; not byte-compared)")
+        ok = ok and bo and bn
+    for rel in sorted(req - set(run.get("blank_byproducts", []))):
+        fo, fn = os.path.join(do, rel), os.path.join(dn, rel)
+        if not (os.path.isfile(fo) and os.path.isfile(fn)): continue
+        a, b = norm(fo), norm(fn)
+        same = a == b
+        msg = f"[{lab}] {rel}: old==new {same} ({sha(a)} / {sha(b)})"
+        if root_for_published is not None and run["published"] is not None:
+            pp = os.path.join(root_for_published, run["published"], rel)
+            msg += f"; old==published {norm(pp) == a}" if os.path.isfile(pp) else "; no published copy"
+        lines.append(msg)
+        ok = ok and same
+    return ok, lines
+
+
+def selftest():
+    """negative controls (Codex P2): the gate must fail on a missing declared output and on an undeclared file"""
+    run = dict(label="selftest", outputs=["outputs/a.csv", "outputs/b.csv"], published=None)
+    figrun = dict(label="selftest_dir", outputs=["figs"], expected=["figs/x/p.pdf", "figs/x/p.png"], published=None)
+    pdf0 = b"%PDF-1.4\n/CreationDate (D:20260101000000)\n/ModDate (D:20260101000000)\nBODY\n"
+    pdf1 = pdf0.replace(b"20260101", b"20261231")
+    def mk(base, files):
+        os.makedirs(base)
+        for rel, data in files.items():
+            os.makedirs(os.path.dirname(os.path.join(base, rel)), exist_ok=True); open(os.path.join(base, rel), "wb").write(data)
+    full = {"outputs/a.csv": b"1\n", "outputs/b.csv": b"2\n"}
+    brun = dict(run, label="selftest_blank", blank_byproducts=["Rplots.pdf"])
+    def rp(content):
+        import zlib
+        z = zlib.compress(content)
+        return (b"%PDF-1.4\n/CreationDate (D:20260101000000)\n<<\n/Length " + str(len(z)).encode() + b" /Filter /FlateDecode\n>>\nstream\n"
+                + z + b"\nendstream\n")
+    cases = [  # (name, run, old files, new files, expected ok)
+        ("identical full sets pass", run, full, full, True),
+        ("declared output missing on both sides fails", run, {"outputs/a.csv": b"1\n"}, {"outputs/a.csv": b"1\n"}, False),
+        ("undeclared extra file on new side fails", run, full, dict(full, **{"outputs/UNEXPECTED.csv": b"x"}), False),
+        ("content difference fails", run, full, dict(full, **{"outputs/b.csv": b"3\n"}), False),
+        ("pdf differing only in dates passes", figrun, {"figs/x/p.pdf": pdf0, "figs/x/p.png": b"P"}, {"figs/x/p.pdf": pdf1, "figs/x/p.png": b"P"}, True),
+        ("pdf body change fails", figrun, {"figs/x/p.pdf": pdf0, "figs/x/p.png": b"P"}, {"figs/x/p.pdf": pdf1.replace(b"BODY", b"BODZ"), "figs/x/p.png": b"P"}, False),
+        ("file missing from a pinned directory inventory fails", figrun, {"figs/x/p.pdf": pdf0}, {"figs/x/p.pdf": pdf0}, False),
+        ("blank byproducts differing in q/Q count pass", brun, dict(full, **{"Rplots.pdf": rp(b"1 J 1 j q\nQ\n")}),
+         dict(full, **{"Rplots.pdf": rp(b"1 J 1 j q\nQ q\nQ q\nQ\n")}), True),
+        ("byproduct with a drawing fails", brun, dict(full, **{"Rplots.pdf": rp(b"1 J 1 j q\nQ\n")}),
+         dict(full, **{"Rplots.pdf": rp(b"1 J 1 j q\n0 0 m 10 10 l S\nQ\n")}), False),
+        ("missing blank byproduct fails", brun, full, dict(full, **{"Rplots.pdf": rp(b"q\nQ\n")}), False),
+    ]
+    T = tempfile.mkdtemp(prefix="parity_p2_selftest_", dir=os.environ.get("TMPDIR", "/tmp"))
+    good = True
+    try:
+        for i, (name, r, fo, fn, want) in enumerate(cases):
+            do, dn = os.path.join(T, f"{i}_old"), os.path.join(T, f"{i}_new"); mk(do, fo); mk(dn, fn)
+            got, _ = compare_outputs(do, dn, r)
+            print(f"[selftest] {name}: {'ok' if got == want else 'WRONG'} (gate says {'pass' if got else 'fail'})", flush=True)
+            good = good and got == want
+    finally:
+        shutil.rmtree(T, ignore_errors=True)
+    return good
 
 
 def run_side(W, run, side):
@@ -187,6 +305,7 @@ def main(cases):
         if ":" in c: c, lab = c.split(":"); only[c] = lab; cases[i] = c
         assert c in CASES, f"unknown case {c}; known: {sorted(CASES)}"
         assert c not in only or only[c] in [r["label"] for r in CASES[c]], f"unknown label {only.get(c)} for case {c}"
+    assert selftest(), "parity_phase2 self-test failed: the output gate does not catch what it must"
     c = subprocess.run(["git", "-C", ROOT, "rev-parse", "v5-as-run^{commit}"], capture_output=True, text=True).stdout.strip()
     assert c == V5_COMMIT, f"tag v5-as-run resolves to '{c}', expected {V5_COMMIT}"
     W = tempfile.mkdtemp(prefix="parity_p2_", dir=os.environ.get("TMPDIR", "/tmp"))
@@ -208,18 +327,9 @@ def main(cases):
                     else:
                         ok = False; print(f"[{run['label']}] STDOUT DIFFERS")
                         print("".join(list(difflib.unified_diff(so.splitlines(1), sn.splitlines(1), "old", "new"))[:40]))
-                fo, fn = files_under(do, run["outputs"]), files_under(dn, run["outputs"])
-                if set(fo) != set(fn) or not fo:
-                    ok = False; print(f"[{run['label']}] OUTPUT SETS DIFFER: only old {sorted(set(fo)-set(fn))}, only new {sorted(set(fn)-set(fo))}")
-                for rel in sorted(set(fo) & set(fn)):
-                    a, b = norm(fo[rel]), norm(fn[rel])
-                    same = a == b
-                    msg = f"[{run['label']}] {rel}: old==new {same} ({sha(a)} / {sha(b)})"
-                    if run["published"] is not None:
-                        pp = os.path.join(ROOT, run["published"], rel)
-                        msg += f"; old==published {os.path.isfile(pp) and norm(pp) == a}" if os.path.isfile(pp) else "; no published copy"
-                    print(msg, flush=True)
-                    ok = ok and same
+                good, lines = compare_outputs(do, dn, run, ROOT)
+                for l in lines: print(l, flush=True)
+                ok = ok and good
             print(f"== case {case}: {'PARITY2_OK' if ok else 'PARITY2_FAILED'}", flush=True)
             ok_all = ok_all and ok
     finally:
@@ -229,4 +339,5 @@ def main(cases):
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--selftest"]: sys.exit(0 if selftest() else 1)
     sys.exit(main(sys.argv[1:] or sorted(CASES)))
