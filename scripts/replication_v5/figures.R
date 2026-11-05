@@ -857,7 +857,7 @@ cat("[done]", out_pdf, "\n[done]", out_png, "\n")
 
 # ===================== fig19: figures_tables/fig_cell_alerts.R (original body; single-figure mode only) =====================
 if (ONE == "fig19") {
-  cat("[figures.R] fig19 <- figures_tables/fig_cell_alerts.R\n")
+  cat("[figures.R] fig19 <- fig_cell_alerts.R (original body)\n")
   local({
 # fig_cell_alerts.R -- Figure: where the pretrained embedding changes forecasts (ggplot2 only).
 # Two columns (0.6 / 0.4): A = global PRIO-GRID map, B = Africa, same measure, cells and color scale.
@@ -1463,7 +1463,7 @@ draw_countries_all(sub("\\.png$", "_print_countries_all_count.png", f_out), "cou
 
 # ===================== ukr_map: scripts/phase4_scaling/fig_ukraine_map.R (original body; single-figure mode only) =====================
 if (ONE == "ukr_map") {
-  cat("[figures.R] ukr_map <- scripts/phase4_scaling/fig_ukraine_map.R\n")
+  cat("[figures.R] ukr_map <- fig_ukraine_map.R (original body)\n")
   local({
 # fig_ukraine_map.R -- Ukraine forecast maps for the fine-tuning exercise (fig:ukraine_invasion + appendix maps).
 # Shading = forecast probability of any violent event in the month shown, from the pretrained encoder fine-tuned on
@@ -1538,7 +1538,7 @@ cat("[done]\n")
 
 # ===================== ukr_gain: scripts/replication_v5/fig_ukraine_alert_gain_arm.R (original body; single-figure mode only) =====================
 if (ONE == "ukr_gain") {
-  cat("[figures.R] ukr_gain <- scripts/replication_v5/fig_ukraine_alert_gain_arm.R\n")
+  cat("[figures.R] ukr_gain <- fig_ukraine_alert_gain_arm.R (original body)\n")
   local({
 # fig_ukraine_alert_gain_arm.R -- replication_v5 copy of scripts/phase4_scaling/fig_ukraine_alert_gain.R (2026-11-02).
 # Only change: the fine-tuning arm in the three output names comes from env UKR_ARM (top2 | full, required) instead of
