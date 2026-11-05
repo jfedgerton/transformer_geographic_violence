@@ -55,5 +55,5 @@ scripts/phase4_scaling/train_repr_obj.py,c54e27c61ae10ba25a9c3535a6e8930b,21934,
 scripts/phase4_scaling/transfer_eval_region_fullpreds.py,e89ca1620d781574673b54afdc68e334,19004,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/vocab_remap.py,2556fc91c8136555753642290e9847ce,4157,script,pipeline/tasks.sbatch
 scripts/replication_v5/check_tables.py,9733de6f5786e3729bc1885e378d1b6e,4989,new_v5,"extra (config, provenance, tools)"
-scripts/replication_v5/figures.R,27d3db0bd882ecbffc54382421c3b765,121382,new_v5,pipeline/tasks.sbatch
+scripts/replication_v5/figures.R,ebb0ad76189349578a4f9553e958ffd7,118994,new_v5,pipeline/tasks.sbatch
 scripts/replication_v5/make_tables.py,25cb0eff54365381b04bd605c5e89051,48297,new_v5,pipeline/run.sh

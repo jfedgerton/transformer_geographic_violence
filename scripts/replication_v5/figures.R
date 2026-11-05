@@ -88,19 +88,19 @@ if (want("fig4")) {
   dir.create(file.path(FO, "fig4_cell_maps"), recursive = TRUE, showWarnings = FALSE)
   cat("[figures.R] fig4 <- replication_v5/fig_cell_maps.R\n")
   local({
-# fig_cell_maps.R -- main-text Figure 4 (fig:cell_maps): four 0.5-degree cell maps of alerts changed by the embedding.
-#   A = base + embedding vs. persistence, global     B = same, Africa
-#   C = base + embedding vs. base (nested), global   D = same, Africa
+# fig_cell_maps.R -- main-text Figure 4 (fig:cell_maps): two 0.5-degree cell maps of alerts changed by the embedding.
+# A = base + embedding vs. base (nested), global    B = same, Africa
+# 2026-11-05 (Jared): the persistence row (old panels A-B, base + embedding vs. persistence) is dropped from the paper.
 # Each cell: correct alerts gained minus false alerts added (net = d_tp - d_fp), already averaged over the three encoder
 # seeds in the input files (cell_alerts_agg.py output; one row per PRIO-GRID cell). Conventions (palette, bins, cell
 # geometry, Natural Earth borders, held-out region outlines, map extents) copied from figures_tables/fig_cell_alerts.R.
-# Reproduces figures/fig_cell_alerts_maps_pers_nested_v2.png (original script fig_maps_2row.R is lost).
+# Old four-panel version: figures/fig_cell_alerts_maps_pers_nested_v2.png (original script fig_maps_2row.R is lost).
 #
 # Note on totals: at equal alert budgets every extra correct alert displaces one false alert, so sum(d_fp) = -sum(d_tp)
-# and sum(net) = 2 * sum(d_tp). The numbers in Sec. 4.1 (4,762 / 1,695 / 710 / 197) are the extra correct alerts,
+# and sum(net) = 2 * sum(d_tp). The numbers in Sec. 4.1 (710 / 197) are the extra correct alerts,
 # sum(d_tp) = sum(net) / 2; the script checks both.
 #
-# Usage: Rscript fig_cell_maps.R <persistence_csv_gz> <incidence_csv_gz> <ne_zip> <out_dir>
+# Usage: Rscript fig_cell_maps.R <incidence_csv_gz> <ne_zip> <out_dir>
 # Tested with R 4.3.3, ggplot2 3.4.4, sf 1.0.15.
 set.seed(123)
 for (p in c("tidyverse", "sf")) if (!requireNamespace(p, quietly = TRUE)) stop("R package ", p, " is not installed")
@@ -111,28 +111,24 @@ if (!l10n_info()$`UTF-8`) invisible(suppressWarnings(Sys.setlocale("LC_CTYPE", "
 stopifnot(l10n_info()$`UTF-8`)
 
 # ---- arguments and outputs --------------------------------------------------------------------------------
-args <- c("outputs/cell_alerts_persistence_M_fullsrc.csv.gz", "outputs/cell_alerts_incidence_M_fullsrc.csv.gz", NE_ZIP, file.path(FO, "fig4_cell_maps"))   # was: args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 4) stop("usage: Rscript fig_cell_maps.R <persistence_csv_gz> <incidence_csv_gz> <ne_zip> <out_dir>")
-f_pers <- args[1]; f_inc <- args[2]; f_ne <- args[3]; out_dir <- args[4]
-for (f in c(f_pers, f_inc, f_ne)) if (!file.exists(f)) stop("input not found: ", f)
+args <- c("outputs/cell_alerts_incidence_M_fullsrc.csv.gz", NE_ZIP, file.path(FO, "fig4_cell_maps")) # was: args <- commandArgs(trailingOnly = TRUE); persistence input dropped 2026-11-05
+if (length(args) != 3) stop("usage: Rscript fig_cell_maps.R <incidence_csv_gz> <ne_zip> <out_dir>")
+f_inc <- args[1]; f_ne <- args[2]; out_dir <- args[3]
+for (f in c(f_inc, f_ne)) if (!file.exists(f)) stop("input not found: ", f)
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
-f_png <- file.path(out_dir, "fig_cell_alerts_maps_pers_nested_M_fullsrc.png")
-f_pdf <- file.path(out_dir, "fig_cell_alerts_maps_pers_nested_M_fullsrc.pdf")
+f_png <- file.path(out_dir, "fig_cell_alerts_maps_nested_M_fullsrc.png")
+f_pdf <- file.path(out_dir, "fig_cell_alerts_maps_nested_M_fullsrc.pdf")
 for (f in c(f_png, f_pdf)) if (file.exists(f)) stop("refusing to overwrite existing output: ", f)
 
 # ---- cells ------------------------------------------------------------------------------------------------
 bin_levels <- c("-2 or less", "-2 to -0.5", "-0.5 to 0", "No change", "0 to +0.5", "+0.5 to +2", "+2 or more")
-pers <- read_csv(f_pers, show_col_types = FALSE)
 inc <- read_csv(f_inc, show_col_types = FALSE)
-need_pers <- c("gid", "region", "events", "tp_pers", "fp_pers", "tp_emb", "fp_emb", "d_tp", "d_fp", "lat", "lon")
 need_inc <- c("gid", "region", "events", "tp_base", "fp_base", "tp_emb", "fp_emb", "n_seeds", "d_tp", "d_fp", "lat", "lon")
-if (!all(need_pers %in% names(pers))) stop("persistence file missing columns: ", paste(setdiff(need_pers, names(pers)), collapse = ", "))
 if (!all(need_inc %in% names(inc))) stop("incidence file missing columns: ", paste(setdiff(need_inc, names(inc)), collapse = ", "))
-stopifnot(!anyDuplicated(pers$gid), !anyDuplicated(inc$gid), nrow(pers) == nrow(inc), setequal(pers$gid, inc$gid))
-stopifnot(!anyNA(pers[need_pers]), !anyNA(inc[need_inc]), all(inc$n_seeds == 3))
-stopifnot(all(abs(pers$lat * 4 - round(pers$lat * 4)) < 1e-9), all(abs(pers$lon * 4 - round(pers$lon * 4)) < 1e-9))  # 0.5-deg centres
+stopifnot(!anyDuplicated(inc$gid))
+stopifnot(!anyNA(inc[need_inc]), all(inc$n_seeds == 3))
+stopifnot(all(abs(inc$lat * 4 - round(inc$lat * 4)) < 1e-9), all(abs(inc$lon * 4 - round(inc$lon * 4)) < 1e-9)) # 0.5-deg centres
 # d_tp / d_fp are the seed means of the per-seed differences: check against the stored seed-mean tp/fp columns
-stopifnot(max(abs(pers$d_tp - (pers$tp_emb - pers$tp_pers))) < 1e-3, max(abs(pers$d_fp - (pers$fp_emb - pers$fp_pers))) < 1e-3)
 stopifnot(max(abs(inc$d_tp - (inc$tp_emb - inc$tp_base))) < 1e-3, max(abs(inc$d_fp - (inc$fp_emb - inc$fp_base))) < 1e-3)
 
 bin_net <- function(d) {
@@ -141,19 +137,18 @@ bin_net <- function(d) {
                                      net == 0 ~ "No change", net < 0.5 ~ "0 to +0.5", net < 2 ~ "+0.5 to +2",
                                      TRUE ~ "+2 or more"), levels = bin_levels))
 }
-pers <- bin_net(pers); inc <- bin_net(inc)
-stopifnot(!anyNA(pers$bin), !anyNA(inc$bin))
+inc <- bin_net(inc)
+stopifnot(!anyNA(inc$bin))
 
 # ---- totals check against the text (Sec. 4.1) -------------------------------------------------------------
 totals <- tibble(
-  panel = c("A", "B", "C", "D"),
-  target = c(4762, 1695, 710, 197),
-  sum_d_tp = c(sum(pers$d_tp), sum(pers$d_tp[pers$region == "africa"]), sum(inc$d_tp), sum(inc$d_tp[inc$region == "africa"])),
-  sum_d_fp = c(sum(pers$d_fp), sum(pers$d_fp[pers$region == "africa"]), sum(inc$d_fp), sum(inc$d_fp[inc$region == "africa"])),
-  sum_net = c(sum(pers$net), sum(pers$net[pers$region == "africa"]), sum(inc$net), sum(inc$net[inc$region == "africa"])),
+  panel = c("A", "B"),
+  target = c(710, 197),
+  sum_d_tp = c(sum(inc$d_tp), sum(inc$d_tp[inc$region == "africa"])),
+  sum_d_fp = c(sum(inc$d_fp), sum(inc$d_fp[inc$region == "africa"])),
+  sum_net = c(sum(inc$net), sum(inc$net[inc$region == "africa"])),
   # Africa by map extent instead of held-out region label (for the error report only)
-  sum_d_tp_extent = c(NA, sum(pers$d_tp[between(pers$lon, -25, 60) & between(pers$lat, -36, 38)]), NA,
-                      sum(inc$d_tp[between(inc$lon, -25, 60) & between(inc$lat, -36, 38)]))
+  sum_d_tp_extent = c(NA, sum(inc$d_tp[between(inc$lon, -25, 60) & between(inc$lat, -36, 38)]))
 ) |> mutate(half_net = sum_net / 2)
 print(totals)
 bad <- totals |> filter(abs(half_net - target) > 1 | abs(sum_d_tp - target) > 1)
@@ -164,7 +159,7 @@ if (nrow(bad) > 0) {
   } else stop("totals do not reproduce Sec. 4.1 within 1 for panel(s) ", paste(bad$panel, collapse = ", "),
        ". Columns: sum_d_tp = extra correct alerts (region label), half_net = sum(d_tp - d_fp)/2, sum_net = sum(d_tp - d_fp), ",
        "sum_d_tp_extent = Africa by map extent", ". Set FIG_ALLOW_TOTAL_DIFF=1 to draw anyway.")
-} else cat("[fig] totals reproduce Sec. 4.1 (extra correct alerts = sum(net)/2): A 4,762, B 1,695, C 710, D 197\n")
+} else cat("[fig] totals reproduce Sec. 4.1 (extra correct alerts = sum(net)/2): A 710, B 197\n")
 
 # ---- countries and held-out regions (hard-coded from scripts/phase4_scaling/regions.py, as in fig_cell_alerts.R) --
 region_of <- list(
@@ -217,29 +212,16 @@ fill_bins <- scale_fill_manual(values = setNames(c("#FF3B30", "#E8746C", "#B9908
 AFR_X <- c(-25, 60); AFR_Y <- c(-36, 38)
 GLB_X <- c(-130, 180); GLB_Y <- c(-50, 75)
 # binned version: every cell with events or any change (as in fig_cell_alerts.R)
-act_pers <- pers |> filter(events > 0 | net != 0)
 act_inc <- inc |> filter(events > 0 | net != 0)
-cat(sprintf("[fig] cells drawn: persistence %d, nested %d (of %d)\n", nrow(act_pers), nrow(act_inc), nrow(pers)))
+cat(sprintf("[fig] cells drawn: nested %d (of %d)\n", nrow(act_inc), nrow(inc)))
 
 pA <- ggplot() +
-  geom_sf(data = world, fill = LAND, colour = BORDER, linewidth = 0.08) +
-  geom_tile(data = act_pers, aes(lon, lat, fill = bin), width = 0.5, height = 0.5) +
-  geom_sf(data = regions, fill = NA, colour = REGION_LINE, linewidth = 0.25) +
-  fill_bins + coord_sf(xlim = GLB_X, ylim = GLB_Y, expand = FALSE, datum = NA) + labs(x = NULL, y = NULL) +
-  theme_void(base_size = 12) + theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0))
-pB <- ggplot() +
-  geom_sf(data = world, fill = LAND, colour = BORDER, linewidth = 0.08) +
-  geom_tile(data = act_pers, aes(lon, lat, fill = bin), width = 0.5, height = 0.5) +
-  geom_sf(data = regions, fill = NA, colour = REGION_LINE, linewidth = 0.25) +
-  fill_bins + coord_sf(xlim = AFR_X, ylim = AFR_Y, expand = FALSE, datum = NA) + labs(x = NULL, y = NULL) +
-  theme_void(base_size = 12) + theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0))
-pC <- ggplot() +
   geom_sf(data = world, fill = LAND, colour = BORDER, linewidth = 0.08) +
   geom_tile(data = act_inc, aes(lon, lat, fill = bin), width = 0.5, height = 0.5) +
   geom_sf(data = regions, fill = NA, colour = REGION_LINE, linewidth = 0.25) +
   fill_bins + coord_sf(xlim = GLB_X, ylim = GLB_Y, expand = FALSE, datum = NA) + labs(x = NULL, y = NULL) +
   theme_void(base_size = 12) + theme(legend.position = "none", plot.margin = margin(0, 0, 0, 0))
-pD <- ggplot() +
+pB <- ggplot() +
   geom_sf(data = world, fill = LAND, colour = BORDER, linewidth = 0.08) +
   geom_tile(data = act_inc, aes(lon, lat, fill = bin), width = 0.5, height = 0.5) +
   geom_sf(data = regions, fill = NA, colour = REGION_LINE, linewidth = 0.25) +
@@ -253,14 +235,13 @@ g_leg <- ggplotGrob(pA + guides(fill = guide_legend(title.position = "top", titl
                             legend.key.height = grid::unit(0.45, "cm"), legend.spacing.x = grid::unit(0.15, "cm")))
 leg <- g_leg$grobs[[which(sapply(g_leg$grobs, function(x) x$name) == "guide-box")]]
 
-# ---- layout (inches): two rows of equal height, global map left, Africa right; titles above, legend at bottom ------
+# ---- layout (inches): one row, global map left, Africa right; titles above, legend at bottom ------
 W <- 13; GAP <- 0.2
 RA <- diff(GLB_X) / diff(GLB_Y); RB <- diff(AFR_X) / diff(AFR_Y)
 HT <- (W - GAP) / (RA + RB); WA <- HT * RA; WB <- HT * RB
-TITLE <- 0.45; ROWGAP <- 0.05; LEG <- 1.15
-yBot <- LEG                                  # bottom of C and D
-yTop <- yBot + HT + TITLE + ROWGAP           # bottom of A and B
-H <- yTop + HT + TITLE
+TITLE <- 0.45; LEG <- 1.15
+yBot <- LEG                                   # bottom of A and B
+H <- yBot + HT + TITLE
 stopifnot(WA + GAP + WB <= W + 1e-9)
 cat(sprintf("[fig] page %.2f x %.2f in, map height %.2f in\n", W, H, HT))
 inch <- function(v) grid::unit(v, "in")
@@ -271,12 +252,9 @@ for (dev in c("png", "pdf")) {
   if (dev == "png") png(f_png, width = W, height = H, units = "in", res = 300, bg = "white")
   if (dev == "pdf") cairo_pdf(f_pdf, width = W, height = H, bg = "white")
   grid::grid.newpage()
-  print(pA, vp = vp(0, yTop, WA, HT)); print(pB, vp = vp(WA + GAP, yTop, WB, HT))
-  print(pC, vp = vp(0, yBot, WA, HT)); print(pD, vp = vp(WA + GAP, yBot, WB, HT))
-  grid::grid.text("A. Base + embedding vs. persistence, global", x = inch(0.03), y = inch(H - 0.05), just = c("left", "top"), gp = tgp)
+print(pA, vp = vp(0, yBot, WA, HT)); print(pB, vp = vp(WA + GAP, yBot, WB, HT))
+  grid::grid.text("A. Base + embedding vs. base, global", x = inch(0.03), y = inch(H - 0.05), just = c("left", "top"), gp = tgp)
   grid::grid.text("B. Africa", x = inch(WA + GAP), y = inch(H - 0.05), just = c("left", "top"), gp = tgp)
-  grid::grid.text("C. Base + embedding vs. base, global", x = inch(0.03), y = inch(yTop - ROWGAP - 0.05), just = c("left", "top"), gp = tgp)
-  grid::grid.text("D. Africa", x = inch(WA + GAP), y = inch(yTop - ROWGAP - 0.05), just = c("left", "top"), gp = tgp)
   grid::pushViewport(vp(0, 0, W, LEG)); grid::grid.draw(leg); grid::popViewport()
   dev.off()
 }
