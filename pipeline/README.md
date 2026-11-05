@@ -13,7 +13,8 @@ review of this phase is finished.
 pipeline/
   run.sh           driver: checks, then submits every job with its resources and dependencies (stages 00-09)
   tasks.sbatch     the only Slurm job script; TASK=<name> selects the job body (one branch per former launcher)
-  manifest.csv     every file the pipeline runs, with md5, size and role
+  manifest.csv     every file the pipeline runs, with md5, size and role (the tests below and make_manifest.py are kept
+                   in the repository as proof and tooling but are not part of the package, so they are not listed)
   tests/parity_phase1.py   proves run.sh + tasks.sbatch submit and run what the v5 drivers + launchers did (tag v5-as-run)
   tests/v5_baseline_blobs.txt   git blob hashes of the 51 v5 files the test rebuilds from the tag
 scripts/           analysis code, byte-identical to the code that produced the reported results
@@ -96,6 +97,7 @@ to be present.
 | `scripts/crossdomain/xd_boot.py` | `xd_m_boot.py`, `xd_s_boot.py` | `XD_CAP=M` / `S` | job 56955161: both outputs and stdout byte-identical |
 | `scripts/phase4_scaling/sudan_cells.py` | `audit_cells_export.py`, `audit_cell_country.R` (embedded verbatim, run with `Rscript`), `sudan_cells_fix.py` | none (runs all three steps) | job 56961249: 4 outputs and stdout byte-identical; outputs equal the published files |
 | `scripts/replication_v5/figures.R` | `fig_loro_gains_v2.R`, `fig_cell_maps.R`, `fig_finetune_gains.R`, `fig_placebo_gradient_a_only_nolabel.R`, `fig_random_encoder.R`, `fig_share_curve.R`, `fig_placebo_gradient.R`, `fig_share_regions.R`, `fig_persistence_gap.R` | optional 3rd argument: figure ids (default all nine) | job 56961250: all 19 figure files identical |
+| `scripts/replication_v5/figures.R --one fig19 / ukr_map / ukr_gain` | `figures_tables/fig_cell_alerts.R`, `scripts/phase4_scaling/fig_ukraine_map.R`, `scripts/replication_v5/fig_ukraine_alert_gain_arm.R` (stages 06 and 07) | `--one <id>` plus that script's own arguments; one block per R session, as before | jobs 57006507 (figures_one 5 runs and figures, PARITY2_OK, inventories complete, all outputs identical) and 57006508 (parity_phase1 PARITY_OK) |
 | `scripts/crossdomain/prep_sim.py` | `prep_sim_homicide.py`, `prep_sim_traffic.py`, `prep_sim_placebos_v2.py` | `XD_CAUSE=homicide` / `traffic` / `placebos` | jobs 56962173 / 56962174 / 56962175: all 8 outputs and stdout identical; events and audits equal the published files except the placebo audit (published audit is from the dengue-only v2 rerun) |
 | `scripts/crossdomain/brazil_panel.py` | `build_brazil_panel.py`, `build_brazil_traffic_panel.py`, `build_brazil_placebo_panel.py` | `XD_CAUSE=homicide` / `traffic` / `suicide` / `drowning` / `dengue` (was `XD_PLACEBO`) | job 56962176: all 10 outputs (5 panels + audits) and stdout identical; all equal the published files |
 

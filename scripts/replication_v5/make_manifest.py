@@ -68,8 +68,9 @@ while todo:
         if path_of(cand): todo.append(cand); why.setdefault(cand, rel)
 for extra in ["scripts/phase4_scaling/Rprofile_cairo", "env/requirements_frozen_2026-10-19.txt", "env/versions_2026-10-19.txt",
               "scripts/00_master.py", "scripts/crossdomain/fetch_sim_dores.sh",
-              "scripts/replication_v5/check_tables.py", "scripts/replication_v5/make_manifest.py", "pipeline/README.md",
-              "pipeline/tests/parity_phase1.py", "pipeline/tests/v5_baseline_blobs.txt", "pipeline/tests/parity_phase2.py"]:
+              "scripts/replication_v5/check_tables.py", "pipeline/README.md"]:
+    # 2026-11-05: the consolidation proofs (pipeline/tests/*) and this tool stay in the repository but are not part of
+    # the replication package, so they are not listed here
     if path_of(extra):
         seen[extra] = path_of(extra); why.setdefault(extra, "extra (config, provenance, tools)")
     else:

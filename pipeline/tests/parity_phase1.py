@@ -312,7 +312,17 @@ PHASE2_MAP = {
                     ("scripts/crossdomain/brazil_panel.py", "scripts/crossdomain/build_brazil_placebo_panel.py"),
                     ("  ENV XD_CAUSE=suicide\n", "  ENV XD_PLACEBO=suicide\n"), ("  ENV XD_CAUSE=drowning\n", "  ENV XD_PLACEBO=drowning\n"),
                     ("  ENV XD_CAUSE=dengue\n", "  ENV XD_PLACEBO=dengue\n")],
+    # 2026-11-05: the three single-figure R scripts of stages 06-07 now run as figures.R --one <id>, same arguments
+    "alerts_M": [("CMD Rscript scripts/replication_v5/figures.R --one fig19 ", "CMD Rscript figures_tables/fig_cell_alerts.R ")],
+    **{f"ukr_map_{f}_{a}": [("CMD Rscript scripts/replication_v5/figures.R --one ukr_map ", "CMD Rscript scripts/phase4_scaling/fig_ukraine_map.R "),
+                            ("export_ukraine_map_fullsrc.py scripts/replication_v5/figures.R", "export_ukraine_map_fullsrc.py scripts/phase4_scaling/fig_ukraine_map.R")]
+       for f in ("f0025", "f01") for a in ("top2", "full")},
+    **{f"ukr_gain_{a}": [("CMD Rscript scripts/replication_v5/figures.R --one ukr_gain ", "CMD Rscript scripts/replication_v5/fig_ukraine_alert_gain_arm.R ")]
+       for a in ("top2", "full")},
 }
+# wrapped jobs whose --wrap text calls a merged script: new substring -> old substring (must occur exactly once)
+PHASE2_WRAP = {f"ukr_gain_{a}": ("Rscript scripts/replication_v5/figures.R --one ukr_gain ", "Rscript scripts/replication_v5/fig_ukraine_alert_gain_arm.R ")
+               for a in ("top2", "full")}
 def phase2_normalize(job, trace, mode):
     for a, b in PHASE2_MAP.get(job, []):
         if mode == "ok" and a not in trace:   # the merged script must really be called with its selector
@@ -360,6 +370,10 @@ PHASE2_CHAIN = {
 }
 def chain_wrap(job, wrap):
     """new --wrap -> what the old --wrap should be (unchanged if the job has no chain merge)."""
+    if job in PHASE2_WRAP and wrap is not None:
+        nw, ow = PHASE2_WRAP[job]
+        if wrap.count(nw) != 1: return wrap + " PHASE2_WRAP_NEW_CALL_NOT_FOUND"
+        return wrap.replace(nw, ow)
     c = PHASE2_CHAIN.get(job)
     if c is None or wrap is None: return wrap
     nw, ow = c["new_wrap"].replace("{R}", R), c["old_wrap"].replace("{R}", R)
@@ -444,6 +458,8 @@ MUTATIONS = [  # (name, file, old text, new text, bodies to run)
     ("merged Sudan script replaced by its first step", "pipeline/run.sh", '"venv/bin/python $P/sudan_cells.py"', '"venv/bin/python $P/audit_cells_export.py"', ["sudan_cells_keep"]),
     ("merged SIM prep with the wrong cause", "pipeline/tasks.sbatch", "XD_CAUSE=homicide venv_xd/bin/python $X/prep_sim.py", "XD_CAUSE=traffic venv_xd/bin/python $X/prep_sim.py", ["br_sim_hom"]),
     ("merged placebo panel with the wrong cause", "pipeline/tasks.sbatch", "do XD_CAUSE=$c venv/bin/python $X/brazil_panel.py", "do XD_CAUSE=suicide venv/bin/python $X/brazil_panel.py", ["br_placebos"]),
+    ("single-figure call with the wrong figure id", "pipeline/tasks.sbatch", "figures.R --one ukr_map", "figures.R --one fig19", ["ukr_map_f0025_top2"]),
+    ("alert-gain wrap calling the wrong figure id", "pipeline/run.sh", "figures.R --one ukr_gain", "figures.R --one ukr_map", ["ukr_gain_top2"]),
     ("export mode NONE", "pipeline/run.sh", "D_PRIO=$(submit data_prio --account=open", "D_PRIO=$(submit data_prio --export=NONE --account=open", ["data_prio"]),
 ]
 

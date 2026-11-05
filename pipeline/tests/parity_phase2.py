@@ -15,7 +15,7 @@ relative paths, outputs are written only there. Nothing in the project tree is w
 inputs, so run it on Roar, e.g.
   sbatch --account=open --mem=16G --time=01:00:00 -o logs/parity_p2_%j.out \\
          --wrap "cd <root> && module load anaconda && module load r && venv/bin/python pipeline/tests/parity_phase2.py figures"
-Cases: xd_boot, sudan, figures, sim_prep, panel; a single run is selected with case:label (e.g. sim_prep:traffic).  Exit 0 only if every case run is PARITY2_OK."""
+Cases: xd_boot, sudan, figures, figures_one, sim_prep, panel; a single run is selected with case:label (e.g. sim_prep:traffic).  Exit 0 only if every case run is PARITY2_OK."""
 import os, re, sys, glob, shutil, hashlib, subprocess, tempfile, difflib
 
 ROOT = "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast"
@@ -44,6 +44,14 @@ FIG_FILES = ["fig3_loro_gains/fig_loro_gains.pdf", "fig3_loro_gains/fig_loro_gai
              "fig17_share_regions/fig_boot_share_regions.pdf", "fig17_share_regions/fig_boot_share_regions.png",
              "fig18_persistence_gap/fig_boot_persistence.pdf", "fig18_persistence_gap/fig_boot_persistence.png"]
 assert len(FIG_FILES) == 19
+FIG19_ARGS = ["outputs/cell_alerts_incidence_M_fullsrc.csv.gz", NE_ZIP, "incidence",
+              "outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc.png"]   # as tasks.sbatch alert_chain passes them (SIZE=M)
+FIG19_VARIANTS = ["print_countries_all_count", "print_countries_all_rate", "print_opt1", "print_opt4_countries", "print_opt4_maps",
+                  "print_opt4b_countries_wide"]
+UKR_SETS = ["1_invasion", "2_counteroffensives", "3_southern_offensive", "4_2024_2025"]
+def ukr_gain_args(arm):
+    return [f"outputs/ukraine_maps_M_f0025/ukraine_cells_f0.0025_M_fullsrc_{arm}.csv",
+            f"outputs/ukraine_maps_M_f01/ukraine_cells_f0.1_M_fullsrc_{arm}.csv", f"outputs/ukraine_alert_gain_M_{arm}"]
 CASES = {
     "xd_boot": [
         dict(label="M", mode="envdir", dirvar="XC_DIR", inputs=[f"outputs/crossdomain/preds_brazil_*.npz"], mkdirs=[],
@@ -115,6 +123,36 @@ CASES = {
              new=[[PY, f"{{NEW}}/{X}/brazil_panel.py"]], env_new={"XD_CAUSE": c},
              outputs=[f"data_intermediate/xd_brazil_{c}_panel.parquet", f"outputs/crossdomain/xd_brazil_{c}_audit.json"], published=".", stdout=True)
         for c in ("suicide", "drowning", "dengue")
+    ],
+    # 2026-11-05: figures.R --one <id> (single-figure mode) vs the three old single-figure R scripts of stages 06-07
+    "figures_one": [
+        dict(label="fig19", mode="cwd", inputs=["outputs/cell_alerts_incidence_M_fullsrc.csv.gz", NE_ZIP],
+             mkdirs=["outputs/cell_alerts_fig_M_fullsrc"],
+             old=[["Rscript", "{OLD}/figures_tables/fig_cell_alerts.R", *FIG19_ARGS]],
+             new=[["Rscript", f"{{NEW}}/{V}/figures.R", "--one", "fig19", *FIG19_ARGS]],
+             outputs=["outputs/cell_alerts_fig_M_fullsrc"],
+             expected=[f"outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc_{x}.png" for x in FIG19_VARIANTS],
+             published=".", stdout=False),
+    ] + [
+        dict(label=f"ukr_map_{fdir}_{arm}", mode="cwd", inputs=[f"outputs/ukraine_maps_M_{fdir}/ukraine_cells_f{share}_M_fullsrc_{arm}.csv"],
+             mkdirs=[],
+             old=[["Rscript", f"{{OLD}}/{P}/fig_ukraine_map.R", f"outputs/ukraine_maps_M_{fdir}/ukraine_cells_f{share}_M_fullsrc_{arm}.csv"]],
+             new=[["Rscript", f"{{NEW}}/{V}/figures.R", "--one", "ukr_map", f"outputs/ukraine_maps_M_{fdir}/ukraine_cells_f{share}_M_fullsrc_{arm}.csv"]],
+             outputs=[f"outputs/ukraine_maps_M_{fdir}"],
+             expected=[f"outputs/ukraine_maps_M_{fdir}/fig_ukraine_f{share}_M_fullsrc_{arm}_{st}.{ext}" for st in UKR_SETS for ext in ("pdf", "png")],
+             published=".", stdout=False)
+        for fdir, share, arm in (("f0025", "0.0025", "top2"), ("f01", "0.1", "full"))
+    ] + [
+        dict(label=f"ukr_gain_{arm}", mode="cwd", env_both={"UKR_ARM": arm},
+             inputs=[f"outputs/ukraine_maps_M_f0025/ukraine_cells_f0.0025_M_fullsrc_{arm}.csv", f"outputs/ukraine_maps_M_f01/ukraine_cells_f0.1_M_fullsrc_{arm}.csv"],
+             mkdirs=[f"outputs/ukraine_alert_gain_M_{arm}"],
+             old=[["Rscript", f"{{OLD}}/{V}/fig_ukraine_alert_gain_arm.R", *ukr_gain_args(arm)]],
+             new=[["Rscript", f"{{NEW}}/{V}/figures.R", "--one", "ukr_gain", *ukr_gain_args(arm)]],
+             outputs=[f"outputs/ukraine_alert_gain_M_{arm}/fig_ukraine_alert_gain_M_fullsrc_{arm}.pdf",
+                      f"outputs/ukraine_alert_gain_M_{arm}/fig_ukraine_alert_gain_M_fullsrc_{arm}.png",
+                      f"outputs/ukraine_alert_gain_M_{arm}/ukraine_alert_gain_cells_M_fullsrc_{arm}.csv"],
+             published=".", stdout=False)
+        for arm in ("top2", "full")
     ],
 }
 ENV_R = {"R_PROFILE_USER": f"{ROOT}/{P}/Rprofile_cairo"}   # as the old wrapped CPU jobs set it
@@ -263,7 +301,8 @@ def run_side(W, run, side):
     n = link_inputs(d, run["inputs"], flat=(run["mode"] == "envdir")) if run["inputs"] else 0
     for m in (run.get("new_mkdirs_only") if side == "new" and run.get("new_mkdirs_only") is not None else run["mkdirs"]):
         os.makedirs(os.path.join(d, m), exist_ok=True)
-    env = dict(os.environ); env.update(ENV_R); env.update(run.get("env_new", {}) if side == "new" else run.get("env_old", {}))
+    env = dict(os.environ); env.update(ENV_R); env.update(run.get("env_both", {}))
+    env.update(run.get("env_new", {}) if side == "new" else run.get("env_old", {}))
     cwd = d if run["mode"] in ("cwd", "rootrw") else ROOT
     if run["mode"] == "envdir": env[run["dirvar"]] = d
     if run["mode"] == "outdir": env["XD_OUTDIR"] = d

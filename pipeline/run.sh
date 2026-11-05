@@ -276,7 +276,7 @@ run_07() {
     D_LO=$(job ukr_map_f0025_$A tgv_ukrmapfs ukraine_mapfs_%j $OPEN --cpus-per-task=2 --mem=48G --time=02:00:00 $(dep $DG) --export=ALL,TASK=ukraine_map,SIZE=M,UKR_SHARE=0.0025,UKR_FT=$A,OUTSFX=_f0025)
     D_HI=$(job ukr_map_f01_$A tgv_ukrmapfs ukraine_mapfs_%j $OPEN --cpus-per-task=2 --mem=48G --time=02:00:00 $(dep $DG) --export=ALL,TASK=ukraine_map,SIZE=M,UKR_SHARE=0.1,UKR_FT=$A,OUTSFX=_f01)
     wrapcpu ukr_gain_$A 48G 02:00:00 "$(ids $D_LO $D_HI)" \
-      "source venv/bin/activate; mkdir -p outputs/ukraine_alert_gain_M_$A; UKR_ARM=$A Rscript $V/fig_ukraine_alert_gain_arm.R outputs/ukraine_maps_M_f0025/ukraine_cells_f0.0025_M_fullsrc_$A.csv outputs/ukraine_maps_M_f01/ukraine_cells_f0.1_M_fullsrc_$A.csv outputs/ukraine_alert_gain_M_$A" >/dev/null
+      "source venv/bin/activate; mkdir -p outputs/ukraine_alert_gain_M_$A; UKR_ARM=$A Rscript $V/figures.R --one ukr_gain outputs/ukraine_maps_M_f0025/ukraine_cells_f0.0025_M_fullsrc_$A.csv outputs/ukraine_maps_M_f01/ukraine_cells_f0.1_M_fullsrc_$A.csv outputs/ukraine_alert_gain_M_$A" >/dev/null
     D_UKR=$(ids $D_UKR $D_SL $D_WI)
   done
   # ---- CES turnout ----

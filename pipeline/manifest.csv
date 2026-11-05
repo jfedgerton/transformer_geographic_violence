@@ -1,13 +1,9 @@
 path,md5,bytes,role,first_referenced_by
 env/requirements_frozen_2026-10-19.txt,b912b48924f93bf4c547c1a6b91574c6,1403,config,"extra (config, provenance, tools)"
 env/versions_2026-10-19.txt,9e2e62d309694b7a45150f6bed2ddbfc,94,config,"extra (config, provenance, tools)"
-figures_tables/fig_cell_alerts.R,21f619353af54abe813fa58abbf60e86,48841,script,pipeline/tasks.sbatch
-pipeline/README.md,124fd1c8131895b22acacdfb13b65336,13320,driver,"extra (config, provenance, tools)"
-pipeline/run.sh,c06f790f49052e55c32e7822b1394ea3,32189,driver,pipeline/run.sh
-pipeline/tasks.sbatch,f3bf91acd6a7f2eea846ec25e04082a8,20552,driver,pipeline/run.sh
-pipeline/tests/parity_phase1.py,5f7fb6b4773986f73334fb9a22ff7873,31379,driver,"extra (config, provenance, tools)"
-pipeline/tests/parity_phase2.py,6f4397db462a5dfa3871d3ddbe5369af,22626,driver,"extra (config, provenance, tools)"
-pipeline/tests/v5_baseline_blobs.txt,732d4db209ed0119709d3a2a3f932c8c,4359,driver,"extra (config, provenance, tools)"
+pipeline/README.md,372ba65f50f70d5281499fe606d6adea,13938,driver,"extra (config, provenance, tools)"
+pipeline/run.sh,b8fe002a0f5ecd8cbb30c021272a3936,32185,driver,pipeline/run.sh
+pipeline/tasks.sbatch,b13504a0b5a39e2dcb4ae8c58eddfecf,20602,driver,pipeline/run.sh
 scripts/00_master.py,2d8f238269d02455c9d38a21a7a565bc,9761,script,pipeline/run.sh
 scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,pipeline/tasks.sbatch (rebuild loop)
 scripts/01b_ingest_ucdp.py,f54f8f35dde03523eb736775be790227,10781,script,pipeline/tasks.sbatch (rebuild loop)
@@ -46,7 +42,6 @@ scripts/phase4_scaling/country_window_fullsrc.py,6712e8666760bb30add5a6c90354119
 scripts/phase4_scaling/crime_ingest.py,f271b022931ea9124925dfd8ed348db0,4819,script,pipeline/run.sh
 scripts/phase4_scaling/dengue_ingest.py,09c5561d62401dc35dd7bcb06ef0cc8f,3746,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/export_ukraine_map_fullsrc.py,24d05b594c5a09c171ea077cb73c8781,8664,script,pipeline/tasks.sbatch
-scripts/phase4_scaling/fig_ukraine_map.R,130b68d1e17afb539919c4fd277ad57e,4514,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/persistence_month_t_fullsrc.py,cbd3454533847397e5418a98c38b4781,7300,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/prep_ces.py,f3dedd11850bf606ca37b55c47c329fa,6114,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/pretrain_ces.py,18a19e38ef2cd60c70896d3152582e69,6824,script,pipeline/tasks.sbatch
@@ -60,7 +55,5 @@ scripts/phase4_scaling/train_repr_obj.py,c54e27c61ae10ba25a9c3535a6e8930b,21934,
 scripts/phase4_scaling/transfer_eval_region_fullpreds.py,e89ca1620d781574673b54afdc68e334,19004,script,pipeline/tasks.sbatch
 scripts/phase4_scaling/vocab_remap.py,2556fc91c8136555753642290e9847ce,4157,script,pipeline/tasks.sbatch
 scripts/replication_v5/check_tables.py,9733de6f5786e3729bc1885e378d1b6e,4989,new_v5,"extra (config, provenance, tools)"
-scripts/replication_v5/fig_ukraine_alert_gain_arm.R,676adf1948d0d64a9d4c0d88aa57112d,8737,new_v5,pipeline/run.sh
-scripts/replication_v5/figures.R,1f16f02482a298f0e3cc5976b8c281bf,57515,new_v5,pipeline/run.sh
-scripts/replication_v5/make_manifest.py,edd84f06286902f80efca6711e41c603,4779,new_v5,"extra (config, provenance, tools)"
+scripts/replication_v5/figures.R,2d3e3472b0afe603cccffe2026ec3d25,121395,new_v5,pipeline/tasks.sbatch
 scripts/replication_v5/make_tables.py,25cb0eff54365381b04bd605c5e89051,48297,new_v5,pipeline/run.sh

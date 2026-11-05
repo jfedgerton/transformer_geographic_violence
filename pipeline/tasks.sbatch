@@ -166,7 +166,7 @@ alert_chain)        # was launch_alert_chain_fullsrc.sbatch: six scripts in orde
     export R_PROFILE_USER=$PWD/$P/Rprofile_cairo   # png() on headless nodes needs cairo, not X11
     if command -v Rscript >/dev/null && Rscript -e 'suppressPackageStartupMessages({library(ggplot2); library(sf); library(dplyr); library(readr); library(patchwork); library(scales)})'; then
       mkdir -p "$FD"
-      Rscript figures_tables/fig_cell_alerts.R outputs/cell_alerts_incidence${T}.csv.gz "$NE_ZIP" incidence "$FD/fig_cell_alerts_incidence${T}.png"
+      Rscript scripts/replication_v5/figures.R --one fig19 outputs/cell_alerts_incidence${T}.csv.gz "$NE_ZIP" incidence "$FD/fig_cell_alerts_incidence${T}.png"
     else echo "[TODO] figure skipped: Rscript or an R package (ggplot2 sf dplyr readr patchwork scales) is missing"; fi
   fi
   echo ALERTSFS_DONE_${SIZE}${OUTSFX} ;;
@@ -202,11 +202,11 @@ ukraine_map)        # was launch_ukraine_map_fullsrc.sbatch: cell export at one 
   : "${SIZE:?set SIZE=S|M|L}"
   SHARE=${UKR_SHARE:-auto}; FT=${UKR_FT:-top2}; OSFX=${OUTSFX:-}
   OUTD=outputs/ukraine_maps_${SIZE}${OSFX}
-  md5sum $P/export_ukraine_map_fullsrc.py $P/fig_ukraine_map.R
+  md5sum $P/export_ukraine_map_fullsrc.py scripts/replication_v5/figures.R
   SIZE=$SIZE python -u $P/export_ukraine_map_fullsrc.py --share "$SHARE" --ft "$FT" --out-dir "$OUTD" | tee logs/ukraine_mapfs_export_${SLURM_JOB_ID}.txt
   CHOSEN=$(grep -o "map uses share [0-9.]*" logs/ukraine_mapfs_export_${SLURM_JOB_ID}.txt | awk '{print $4}')
   test -n "$CHOSEN" || { echo "no share chosen"; exit 1; }
-  Rscript $P/fig_ukraine_map.R "$OUTD/ukraine_cells_f${CHOSEN}_${SIZE}_fullsrc_${FT}.csv"
+  Rscript scripts/replication_v5/figures.R --one ukr_map "$OUTD/ukraine_cells_f${CHOSEN}_${SIZE}_fullsrc_${FT}.csv"
   echo UKRMAPFS_DONE_${SIZE}${OSFX} share=$CHOSEN ;;
 
 ces_prep)           # was launch_ces_prep.sbatch
