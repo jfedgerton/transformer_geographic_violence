@@ -21,9 +21,10 @@ rebuild)            # was rebuild_pipeline.sbatch (in scripts/): ACLED + UCDP in
   module load anaconda
   source venv/bin/activate
   export PHASE_MODE=global
-  for s in 01_ingest_acled 01b_ingest_ucdp 01c_merge_sources 02_build_grid 03_aggregate_location_month 04_build_sequences 05_build_baseline_features; do
+  # build_panel.py steps, in the order of the former stage-01 scripts (ACLED ingest .. baseline features)
+  for s in acled ucdp merge grid aggregate sequences baseline; do
     echo "=== $(date) RUN $s ==="
-    python scripts/$s.py
+    python scripts/build_panel.py $s
     echo "=== $(date) DONE $s ==="
   done
   echo ALL_BUILD_DONE ;;
@@ -32,9 +33,9 @@ featbuild)          # was phase4_scaling/launch_featbuild.sbatch: 9-field sequen
   module load anaconda
   source venv/bin/activate
   echo "=== $(date) build_sequences_super ==="
-  python scripts/build_sequences_super.py
+  python scripts/build_panel.py super
   echo "=== $(date) 05 (suffix=_super) ==="
-  REPR_SEQ_SUFFIX=_super python scripts/05_build_baseline_features.py
+  REPR_SEQ_SUFFIX=_super python scripts/build_panel.py baseline
   echo SUPERBUILD_DONE ;;
 
 seen_tokens)        # was launch_seen_tokens_fullsrc.sbatch
@@ -350,6 +351,16 @@ xd_boot)            # was crossdomain/launch_xd_m_boot.sbatch (XD_CAP=M) and lau
 xd_plboot)          # was crossdomain/launch_xd_placebo_boot_v3M.sbatch
   md5sum $X/xd_placebo_boot_v3M.py
   venv/bin/python $X/xd_placebo_boot_v3M.py ;;
+
+br_desc)            # added 2026-11-06: outcome map and summary table for the four Brazil panels (Appendix app:vocab)
+  module load anaconda
+  md5sum $X/brazil_descriptives.py $X/fig_brazil_deaths_map.R
+  venv/bin/python $X/brazil_descriptives.py
+  module load r 2>/dev/null || true
+  command -v Rscript >/dev/null || { echo "Rscript not found (load the R module that has ggplot2 and sf)"; exit 1; }
+  export R_PROFILE_USER=$PWD/$P/Rprofile_cairo   # png() on headless nodes needs cairo, not X11
+  Rscript $X/fig_brazil_deaths_map.R
+  echo BRDESC_DONE ;;
 
 *) echo "unknown TASK=$TASK"; exit 1 ;;
 esac

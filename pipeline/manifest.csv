@@ -2,21 +2,13 @@ path,md5,bytes,role,first_referenced_by
 env/requirements_frozen_2026-10-19.txt,b912b48924f93bf4c547c1a6b91574c6,1403,config,"extra (config, provenance, tools)"
 env/versions_2026-10-19.txt,9e2e62d309694b7a45150f6bed2ddbfc,94,config,"extra (config, provenance, tools)"
 pipeline/README.md,372ba65f50f70d5281499fe606d6adea,13938,driver,"extra (config, provenance, tools)"
-pipeline/run.sh,b8fe002a0f5ecd8cbb30c021272a3936,32185,driver,pipeline/run.sh
-pipeline/tasks.sbatch,b13504a0b5a39e2dcb4ae8c58eddfecf,20602,driver,pipeline/run.sh
-scripts/00_master.py,2d8f238269d02455c9d38a21a7a565bc,9761,script,pipeline/run.sh
-scripts/01_ingest_acled.py,93fbb4ac04d2a4fd7e4a0b4353dcb4a3,8160,script,pipeline/tasks.sbatch (rebuild loop)
-scripts/01b_ingest_ucdp.py,f54f8f35dde03523eb736775be790227,10781,script,pipeline/tasks.sbatch (rebuild loop)
-scripts/01c_merge_sources.py,79494b32fdf9be3312c3f47e9975c01b,5413,script,pipeline/tasks.sbatch (rebuild loop)
-scripts/02_build_grid.py,58381c266df4c568aa0b865775f6423e,5862,script,pipeline/tasks.sbatch (rebuild loop)
-scripts/03_aggregate_location_month.py,0709e8f53eabe51ed4954dea0377389e,7956,script,pipeline/tasks.sbatch (rebuild loop)
-scripts/04_build_sequences.py,b41ab318907b1a9df08341ffd80f1f7c,13292,script,pipeline/tasks.sbatch (rebuild loop)
-scripts/05_build_baseline_features.py,705bcf3c7046d50875f6e6f79bd950ea,16280,script,pipeline/tasks.sbatch
-scripts/build_pgm_fatalities_target.py,d61e4545cd4c53fa609fb7f718812594,1517,script,pipeline/run.sh
-scripts/build_priogrid_static.py,facec2e971add70b22de3d5fcff1b529,1834,script,pipeline/run.sh
-scripts/build_sequences_super.py,cf1ba8213c30ccfd3f52302a76a32cb8,9430,script,pipeline/tasks.sbatch
+pipeline/run.sh,a64d2be1ee82f507227d17647a182690,32670,driver,pipeline/run.sh
+pipeline/tasks.sbatch,f08baafa6a1825ccd204d0ff4532067d,21179,driver,pipeline/run.sh
+scripts/build_panel.py,e189c2e939905958c63f75959e3c26ce,98349,script,pipeline/tasks.sbatch
+scripts/crossdomain/brazil_descriptives.py,54e9e1b8b383226ad400b16edac9a326,6986,script,pipeline/tasks.sbatch
 scripts/crossdomain/brazil_panel.py,432aba48282861513c88fcf7e2d2c08c,15806,script,pipeline/tasks.sbatch
 scripts/crossdomain/fetch_sim_dores.sh,c501d82609b341f311ebeb1ed5824796,1041,launcher,pipeline/run.sh
+scripts/crossdomain/fig_brazil_deaths_map.R,a27778503473fa254142918ee0b92bce,3163,script,pipeline/tasks.sbatch
 scripts/crossdomain/prep_sim.py,5dd18f234b45c169aef61846f18eab7c,11025,script,pipeline/tasks.sbatch
 scripts/crossdomain/xd_boot.py,b60c363a569381c20d86bcef78a2a85a,7893,script,pipeline/tasks.sbatch
 scripts/crossdomain/xd_grid_brazil.py,4f412c3c2991f0412148fbe0855ed44f,22751,script,pipeline/tasks.sbatch

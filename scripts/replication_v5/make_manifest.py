@@ -54,7 +54,7 @@ while todo:
             for cand in (nm, os.path.join(d, os.path.basename(nm))):
                 if path_of(cand):
                     todo.append(cand); why.setdefault(cand, rel)
-LOOP = ["scripts/%s.py" % x for x in "01_ingest_acled 01b_ingest_ucdp 01c_merge_sources 02_build_grid 03_aggregate_location_month 04_build_sequences".split()]  # rebuild_pipeline.sbatch loop
+LOOP = []  # 2026-11-05: the rebuild loop now calls scripts/build_panel.py <step>, which the scan above already finds
 for rel in LOOP:
     todo.append(rel); why.setdefault(rel, "pipeline/tasks.sbatch (rebuild loop)")
 while todo:
@@ -67,7 +67,7 @@ while todo:
         cand = os.path.join(d, mod + ".py")
         if path_of(cand): todo.append(cand); why.setdefault(cand, rel)
 for extra in ["scripts/phase4_scaling/Rprofile_cairo", "env/requirements_frozen_2026-10-19.txt", "env/versions_2026-10-19.txt",
-              "scripts/00_master.py", "scripts/crossdomain/fetch_sim_dores.sh",
+              "scripts/crossdomain/fetch_sim_dores.sh",
               "scripts/replication_v5/check_tables.py", "pipeline/README.md"]:
     # 2026-11-05: the consolidation proofs (pipeline/tests/*) and this tool stay in the repository but are not part of
     # the replication package, so they are not listed here

@@ -320,9 +320,19 @@ PHASE2_MAP = {
     **{f"ukr_gain_{a}": [("CMD Rscript scripts/replication_v5/figures.R --one ukr_gain ", "CMD Rscript scripts/replication_v5/fig_ukraine_alert_gain_arm.R ")]
        for a in ("top2", "full")},
 }
+# 2026-11-05: stage 01 now runs scripts/build_panel.py <step> (one fresh process per step, old order and environment)
+_BP = [("acled", "01_ingest_acled"), ("ucdp", "01b_ingest_ucdp"), ("merge", "01c_merge_sources"), ("grid", "02_build_grid"),
+       ("aggregate", "03_aggregate_location_month"), ("sequences", "04_build_sequences"), ("baseline", "05_build_baseline_features")]
+PHASE2_MAP["data_base"] = [(f"/python scripts/build_panel.py {s}\n", f"/python scripts/{o}.py\n") for s, o in _BP]   # python = activated venv stub path
+PHASE2_MAP["data_super"] = [("/python scripts/build_panel.py super\n", "/python scripts/build_sequences_super.py\n"),
+                            ("/python scripts/build_panel.py baseline\n", "/python scripts/05_build_baseline_features.py\n")]
+PHASE2_MAP["data_prio"] = [("CMD venv/bin/python scripts/build_panel.py prio\n", "CMD venv/bin/python scripts/build_priogrid_static.py\n")]
+PHASE2_MAP["data_pgm"] = [("CMD venv/bin/python scripts/build_panel.py pgm\n", "CMD venv/bin/python scripts/build_pgm_fatalities_target.py\n")]
 # wrapped jobs whose --wrap text calls a merged script: new substring -> old substring (must occur exactly once)
 PHASE2_WRAP = {f"ukr_gain_{a}": ("Rscript scripts/replication_v5/figures.R --one ukr_gain ", "Rscript scripts/replication_v5/fig_ukraine_alert_gain_arm.R ")
                for a in ("top2", "full")}
+PHASE2_WRAP["data_prio"] = ("venv/bin/python scripts/build_panel.py prio'", "venv/bin/python scripts/build_priogrid_static.py'")
+PHASE2_WRAP["data_pgm"] = ("venv/bin/python scripts/build_panel.py pgm'", "venv/bin/python scripts/build_pgm_fatalities_target.py'")
 def phase2_normalize(job, trace, mode):
     for a, b in PHASE2_MAP.get(job, []):
         if mode == "ok" and a not in trace:   # the merged script must really be called with its selector
@@ -460,6 +470,7 @@ MUTATIONS = [  # (name, file, old text, new text, bodies to run)
     ("merged placebo panel with the wrong cause", "pipeline/tasks.sbatch", "do XD_CAUSE=$c venv/bin/python $X/brazil_panel.py", "do XD_CAUSE=suicide venv/bin/python $X/brazil_panel.py", ["br_placebos"]),
     ("single-figure call with the wrong figure id", "pipeline/tasks.sbatch", "figures.R --one ukr_map", "figures.R --one fig19", ["ukr_map_f0025_top2"]),
     ("alert-gain wrap calling the wrong figure id", "pipeline/run.sh", "figures.R --one ukr_gain", "figures.R --one ukr_map", ["ukr_gain_top2"]),
+    ("panel steps in the wrong order", "pipeline/tasks.sbatch", "for s in acled ucdp merge grid", "for s in acled merge ucdp grid", ["data_base"]),
     ("export mode NONE", "pipeline/run.sh", "D_PRIO=$(submit data_prio --account=open", "D_PRIO=$(submit data_prio --export=NONE --account=open", ["data_prio"]),
 ]
 

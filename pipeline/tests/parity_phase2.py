@@ -15,8 +15,8 @@ relative paths, outputs are written only there. Nothing in the project tree is w
 inputs, so run it on Roar, e.g.
   sbatch --account=open --mem=16G --time=01:00:00 -o logs/parity_p2_%j.out \\
          --wrap "cd <root> && module load anaconda && module load r && venv/bin/python pipeline/tests/parity_phase2.py figures"
-Cases: xd_boot, sudan, figures, figures_one, sim_prep, panel; a single run is selected with case:label (e.g. sim_prep:traffic).  Exit 0 only if every case run is PARITY2_OK."""
-import os, re, sys, glob, shutil, hashlib, subprocess, tempfile, difflib
+Cases: xd_boot, sudan, figures, figures_one, sim_prep, panel; panel_build runs separately (see panel_build_side); a single run is selected with case:label (e.g. sim_prep:traffic).  Exit 0 only if every case run is PARITY2_OK."""
+import os, re, sys, glob, time, shutil, hashlib, subprocess, tempfile, difflib
 
 ROOT = "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast"
 V5_COMMIT = "b3ed0e0c28e34fd49dc431d93b45ea1e4a3e7743"
@@ -338,6 +338,185 @@ def fig3_diagnostic(W):
           + ("" if p.returncode == 0 else f" -> {p.stderr.strip().splitlines()[-1][:200] if p.stderr.strip() else ''}"), flush=True)
 
 
+# ======================= panel_build: stage 01 (old eleven scripts vs scripts/build_panel.py) =======================
+# Too long for one job, so each side runs as its own job into a persistent work dir, then a third call compares:
+#   parity_phase2.py panel_build --side old --workdir W    (and --side new, in parallel)
+#   parity_phase2.py panel_build --compare W
+# Each side gets its own project root W/<side> holding: scripts/ (the old scripts from tag v5-as-run, or
+# scripts/build_panel.py from this tree), links to the raw inputs, and nothing else. The stage-01 code derives every path
+# from its own location (00_master.py PROJECT_ROOT), except build_pgm_fatalities_target.py, whose hard-coded root line is
+# rewritten to W/<side> in both the old and the new copy; afterwards no copy may still name the project root. The steps
+# run in the pipeline order with the pipeline environment (rebuild: PHASE_MODE=global; featbuild: super, then baseline
+# with REPR_SEQ_SUFFIX=_super; prio; pgm), one fresh process each, as pipeline/tasks.sbatch and run.sh do.
+PB_OLD = [("acled", "01_ingest_acled.py"), ("ucdp", "01b_ingest_ucdp.py"), ("merge", "01c_merge_sources.py"),
+          ("grid", "02_build_grid.py"), ("aggregate", "03_aggregate_location_month.py"), ("sequences", "04_build_sequences.py"),
+          ("baseline", "05_build_baseline_features.py"), ("super", "build_sequences_super.py"),
+          ("prio", "build_priogrid_static.py"), ("pgm", "build_pgm_fatalities_target.py")]
+PB_RUNS = [("acled", {"PHASE_MODE": "global"}), ("ucdp", {"PHASE_MODE": "global"}), ("merge", {"PHASE_MODE": "global"}),
+           ("grid", {"PHASE_MODE": "global"}), ("aggregate", {"PHASE_MODE": "global"}), ("sequences", {"PHASE_MODE": "global"}),
+           ("baseline", {"PHASE_MODE": "global"}), ("super", {}), ("baseline", {"REPR_SEQ_SUFFIX": "_super"}),
+           ("prio", {}), ("pgm", {})]
+PB_RAW = ["data_raw/acled_full.csv", "data_raw/ucdp/GEDEvent_v25_1.csv", "data_raw/priogrid/static/*.json"]
+PB_SKIP = ("scripts/", "stdout_")
+
+# Required stage-01 artifacts (GPT review, 2026-11-06): both sides must write every one of these; any other file is still
+# compared, and a file on one side only still fails. Paths are relative to the side root.
+PB_REQUIRED = sorted(["data_intermediate/acled_cleaned.parquet", "data_intermediate/ucdp_cleaned.parquet",
+                      "data_intermediate/acled_only_backup.parquet", "data_intermediate/events_unified.parquet",
+                      "data_intermediate/acled_with_grid.parquet", "data_intermediate/grid_month_panel.parquet",
+                      "data_intermediate/vocab.json", "data_intermediate/splits.json", "data_intermediate/sequences.parquet",
+                      "data_intermediate/baseline_feature_cols.json", "data_intermediate/baseline_features.parquet",
+                      "data_intermediate/vocab_super.json", "data_intermediate/sequences_super.parquet",
+                      "data_intermediate/baseline_feature_cols_super.json", "data_intermediate/baseline_features_super.parquet",
+                      "data_intermediate/priogrid_static.parquet", "data_intermediate/pgm_fatalities_target.parquet",
+                      "outputs/grid_activity_distribution.png", "outputs/panel_diagnostics.png"])
+PB_STDOUT = [f"stdout_{i:02d}_{step}.txt" for i, (step, _) in enumerate(PB_RUNS)]   # the eleven captures, exactly
+# Timing fields printed by the sequence builders (04_build_sequences.py, build_sequences_super.py). Only these are
+# masked before stdout is compared; counts, percentages and every other line must match exactly.
+PB_TIMING = [(re.compile(r"rate=\d+/s eta=-?[\d.]+ min"), "rate=<T>/s eta=<T> min"),
+             (re.compile(r"Sequence build complete in [\d.]+s"), "Sequence build complete in <T>s"),
+             (re.compile(r"(\(\d+%\)) [\d.]+min"), r"\1 <T>min")]
+
+
+def pb_norm_stdout(t):
+    for rx, rep in PB_TIMING: t = rx.sub(rep, t)
+    return t
+      # not outputs: the code under test and the captured stdout
+
+
+def panel_build_side(side, W):
+    assert side in ("old", "new")
+    c = subprocess.run(["git", "-C", ROOT, "rev-parse", "v5-as-run^{commit}"], capture_output=True, text=True).stdout.strip()
+    assert c == V5_COMMIT, f"tag v5-as-run resolves to '{c}', expected {V5_COMMIT}"
+    d = os.path.join(os.path.abspath(W), side)
+    assert not os.path.exists(d), f"{d} exists; use a fresh work dir"
+    os.makedirs(os.path.join(d, "scripts"))
+    if side == "old":
+        files = ["00_master.py"] + [fn for _, fn in PB_OLD]
+        for fn in files:
+            open(os.path.join(d, "scripts", fn), "wb").write(subprocess.run(
+                ["git", "-C", ROOT, "show", f"v5-as-run:scripts/{fn}"], capture_output=True, check=True).stdout)
+    else:
+        files = ["build_panel.py"]; shutil.copy(os.path.join(ROOT, "scripts", "build_panel.py"), os.path.join(d, "scripts"))
+    hard = f'R="{ROOT}"\n'
+    tgt = "build_pgm_fatalities_target.py" if side == "old" else "build_panel.py"
+    t = open(os.path.join(d, "scripts", tgt)).read()
+    assert t.count(hard) == 1, f"{tgt}: hard-coded root line not found exactly once"
+    open(os.path.join(d, "scripts", tgt), "w").write(t.replace(hard, f'R="{d}"\n'))
+    for fn in files:
+        assert ROOT not in open(os.path.join(d, "scripts", fn)).read(), f"{fn} still names the project root"
+    n = link_inputs(d, PB_RAW, flat=False)
+    print(f"[panel_build/{side}] root {d}; {n} raw inputs linked", flush=True)
+    env0 = dict(os.environ); env0.pop("PHASE_MODE", None); env0.pop("REPR_SEQ_SUFFIX", None)
+    for i, (step, extra) in enumerate(PB_RUNS):
+        env = dict(env0); env.update(extra)
+        script = dict(PB_OLD)[step] if side == "old" else "build_panel.py"
+        cmd = [PY, f"scripts/{script}"] + ([] if side == "old" else [step])
+        t0 = time.time()
+        p = subprocess.run(cmd, cwd=d, env=env, capture_output=True, text=True)
+        open(os.path.join(d, f"stdout_{i:02d}_{step}.txt"), "w").write(p.stdout.replace(d, "<RUNDIR>"))
+        print(f"[panel_build/{side}] {i:02d} {step} {extra or ''} rc={p.returncode} {time.time() - t0:.0f}s", flush=True)
+        if p.returncode:
+            print(p.stdout[-2000:], p.stderr[-4000:], flush=True)
+            print("PANEL_BUILD_SIDE_FAILED", flush=True); return 1
+    open(os.path.join(d, "stdout_DONE"), "w").write("done\n")
+    print("PANEL_BUILD_SIDE_DONE", flush=True)
+    return 0
+
+
+def pb_compare_sides(do, dn, published=True):
+    """compare two finished side roots; returns (ok, lines). Used by panel_build_compare and by its self-test."""
+    lines, ok = [], True
+    io = {f for f in inventory(do) if not f.startswith(PB_SKIP)}
+    inn = {f for f in inventory(dn) if not f.startswith(PB_SKIP)}
+    for side, inv in (("old", io), ("new", inn)):
+        miss = [f for f in PB_REQUIRED if f not in inv]
+        if miss: ok = False; lines.append(f"[panel_build] REQUIRED OUTPUTS MISSING on {side}: {miss}")
+    if io != inn:
+        ok = False; lines.append(f"[panel_build] OUTPUT SETS DIFFER: only old {sorted(io - inn)}, only new {sorted(inn - io)}")
+    lines.append(f"[panel_build] inventory: {len(io)} files written by the old chain ({len(PB_REQUIRED)} required)")
+    content_only = []
+    for rel in sorted(io & inn):
+        a, b = norm(os.path.join(do, rel)), norm(os.path.join(dn, rel))
+        same = a == b
+        msg = f"[panel_build] {rel}: old==new {same} ({sha(a)} / {sha(b)})"
+        if not same and rel.endswith(".parquet"):
+            try:
+                import pandas as pd
+                fa, fb = pd.read_parquet(os.path.join(do, rel)), pd.read_parquet(os.path.join(dn, rel))
+                ce = fa.shape == fb.shape and list(fa.columns) == list(fb.columns) and fa.equals(fb)
+            except Exception as e:
+                ce = False; msg += f"; content check unreadable ({type(e).__name__})"
+            msg += f"; content equal {ce} (diagnostic only, not a pass)"
+            if ce: content_only.append(rel)
+        if published:
+            pp = os.path.join(ROOT, rel)
+            msg += (f"; old==published {norm(pp) == a}" if os.path.isfile(pp) else "; no published copy")
+        lines.append(msg)
+        ok = ok and same
+    for side, d in (("old", do), ("new", dn)):
+        got = sorted(f for f in os.listdir(d) if f.startswith("stdout_") and f != "stdout_DONE")
+        if got != sorted(PB_STDOUT): ok = False; lines.append(f"[panel_build] STDOUT CAPTURES WRONG on {side}: {got}")
+    for f in PB_STDOUT:
+        fo, fn = os.path.join(do, f), os.path.join(dn, f)
+        if not (os.path.isfile(fo) and os.path.isfile(fn)): continue
+        so, sn = pb_norm_stdout(open(fo).read()), pb_norm_stdout(open(fn).read())
+        lines.append(f"[panel_build] {f}: stdout identical apart from timing fields {so == sn}")
+        ok = ok and so == sn
+    if content_only: lines.append(f"[panel_build] NOTE bytes differ but content is equal for {content_only}; still a failure")
+    return ok, lines
+
+
+def panel_build_selftest():
+    """negative and positive controls for pb_compare_sides (GPT review 2026-11-06, P2 findings 1 and 2)"""
+    T = tempfile.mkdtemp(prefix="pb_selftest_"); good = True
+    def side(base, files, logs):
+        os.makedirs(base)
+        for rel, data in files.items():
+            os.makedirs(os.path.dirname(os.path.join(base, rel)), exist_ok=True); open(os.path.join(base, rel), "wb").write(data)
+        for f, txt in logs.items(): open(os.path.join(base, f), "w").write(txt)
+        open(os.path.join(base, "stdout_DONE"), "w").write("done\n")
+    full = {f: b"x" for f in PB_REQUIRED}
+    logs = {f: "ok\n" for f in PB_STDOUT}
+    t1 = dict(logs); t1[PB_STDOUT[5]] = " 100,000 / 9,000,000 (1.1%) rate=4100/s eta=36.2 min\n\nSequence build complete in 12.3s\nProcessed 9,000,000 grid-months\n"
+    t2 = dict(t1); t2[PB_STDOUT[5]] = t1[PB_STDOUT[5]].replace("4100/s eta=36.2", "3900/s eta=38.0").replace("12.3s", "13.4s")
+    t3 = dict(t1); t3[PB_STDOUT[5]] = t1[PB_STDOUT[5]].replace("9,000,000 grid-months", "8,999,999 grid-months")
+    s1 = dict(logs); s1[PB_STDOUT[7]] = " 500,000/9,000,000 (6%) 1.2min\n"
+    s2 = dict(logs); s2[PB_STDOUT[7]] = " 500,000/9,000,000 (6%) 1.9min\n"
+    miss = {f: b"x" for f in PB_REQUIRED[1:]}
+    extra = dict(full); extra["data_intermediate/extra.parquet"] = b"x"
+    diff = dict(full); diff[PB_REQUIRED[0]] = b"y"
+    short = dict(logs); short.pop(PB_STDOUT[-1])
+    cases = [("identical outputs and logs pass", full, logs, full, logs, True),
+             ("empty inventory fails", {}, logs, {}, logs, False),
+             ("required file missing on both sides fails", miss, logs, miss, logs, False),
+             ("extra output on one side fails", full, logs, extra, logs, False),
+             ("content difference fails", full, logs, diff, logs, False),
+             ("timing-only stdout difference passes (sequences)", full, t1, full, t2, True),
+             ("timing-only stdout difference passes (super)", full, s1, full, s2, True),
+             ("count difference in stdout fails", full, t1, full, t3, False),
+             ("missing stdout capture on both sides fails", full, short, full, short, False)]
+    try:
+        for k, (name, fo, lo, fn, ln, want) in enumerate(cases):
+            do, dn = os.path.join(T, f"{k}_old"), os.path.join(T, f"{k}_new"); side(do, fo, lo); side(dn, fn, ln)
+            got, _ = pb_compare_sides(do, dn, published=False)
+            print(f"[pb-selftest] {name}: {'ok' if got == want else 'WRONG'} (says {'pass' if got else 'fail'})", flush=True)
+            good = good and got == want
+    finally:
+        shutil.rmtree(T, ignore_errors=True)
+    return good
+
+
+def panel_build_compare(W):
+    assert panel_build_selftest(), "panel_build self-test failed: the comparison does not catch what it must"
+    do, dn = os.path.join(W, "old"), os.path.join(W, "new")
+    for x in (do, dn): assert os.path.isfile(os.path.join(x, "stdout_DONE")), f"{x} did not finish"
+    ok, lines = pb_compare_sides(do, dn)
+    for l in lines: print(l, flush=True)
+    print("PARITY2_OK" if ok else "PARITY2_FAILED", flush=True)
+    return 0 if ok else 1
+
+
 def main(cases):
     only = {}
     for i, c in enumerate(cases):
@@ -378,5 +557,10 @@ def main(cases):
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["--selftest"]: sys.exit(0 if selftest() else 1)
+    if sys.argv[1:] == ["--selftest"]: sys.exit(0 if (selftest() & panel_build_selftest()) else 1)
+    if sys.argv[1:2] == ["panel_build"]:
+        a = sys.argv[2:]
+        if len(a) == 4 and a[0] == "--side" and a[2] == "--workdir": sys.exit(panel_build_side(a[1], a[3]))
+        if len(a) == 2 and a[0] == "--compare": sys.exit(panel_build_compare(a[1]))
+        sys.exit("usage: parity_phase2.py panel_build --side old|new --workdir W  |  panel_build --compare W")
     sys.exit(main(sys.argv[1:] or sorted(CASES)))

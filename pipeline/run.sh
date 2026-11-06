@@ -80,7 +80,8 @@ declare -A PRE=() EVAL=() RAND=() NEST=() FT2=() FTF=()
 # 00 setup -- raw inputs, environments and a provenance record. Submits no jobs.
 # =====================================================================================================================
 pre_00() {
-  need scripts/00_master.py   # CONFIG and ensure_dirs(), imported by every stage-01 script
+  # build_panel.py runs every stage-01 step and holds the stage-01 configuration
+  need scripts/build_panel.py
   need $T venv/bin/python venv_xd/bin/python env/requirements_frozen_2026-10-19.txt env/versions_2026-10-19.txt
   need data_raw/acled_full.csv data_raw/ucdp/GEDEvent_v25_1.csv data_raw/br_centroids/municipios.csv
   ls data_raw/priogrid/static/*.json >/dev/null 2>&1 || die "no PRIO-GRID static json in data_raw/priogrid/static/"
@@ -116,9 +117,9 @@ run_01() {
   D_BASE=$(job data_base tgv_rebuild rebuild_%j $CR_STD --cpus-per-task=8 --mem=128G --time=12:00:00 --export=ALL,TASK=rebuild)
   D_SUPER=$(job data_super tgv_featbuild featbuild_%j $CR_STD --cpus-per-task=8 --mem=128G --time=06:00:00 $(dep $D_BASE) --export=ALL,TASK=featbuild)
   D_PRIO=$(submit data_prio --account=open --partition=open --cpus-per-task=2 --mem=32G --time=02:00:00 --output=logs/prio_static_%j.out \
-           --wrap "bash -lc 'cd $ROOT && module load anaconda && venv/bin/python scripts/build_priogrid_static.py'")
+           --wrap "bash -lc 'cd $ROOT && module load anaconda && venv/bin/python scripts/build_panel.py prio'")
   D_PGM=$(submit data_pgm --account=open --partition=open --cpus-per-task=2 --mem=48G --time=02:00:00 --output=logs/pgm_target_%j.out $(dep $D_BASE) \
-          --wrap "bash -lc 'cd $ROOT && module load anaconda && venv/bin/python scripts/build_pgm_fatalities_target.py'")
+          --wrap "bash -lc 'cd $ROOT && module load anaconda && venv/bin/python scripts/build_panel.py pgm'")
   D_SEEN=$(job data_seen seen_tok_fs seen_tok_fs_%j $OPEN --cpus-per-task=2 --mem=96G --time=08:00:00 $(dep $(ids $D_BASE $D_SUPER)) --export=ALL,TASK=seen_tokens)
   D_DATA=$(ids $D_BASE $D_SUPER $D_PRIO $D_PGM $D_SEEN)
 }
@@ -306,6 +307,8 @@ run_07() {
 #   L      : Table 20 / T.4 L column, from the two earliest grid versions, exactly as run (xd_L_c0 = xd_grid_brazil.py
 #            ft_rich tasks 1,5,9; xd_L_c1 = xd_grid_brazil_v2.py c_nested tasks 0-2). xd_boot.py (XD_CAP=M) reads both.
 #   S      : homicide headline (Table 20, T.4); bootstrap xd_s_boot.csv
+#   descr  : outcome map and summary table for the four panels (App app:vocab), br_desc = brazil_descriptives.py +
+#            fig_brazil_deaths_map.R; writes outputs/crossdomain/brazil_{cell_totals,summary}.csv and figures_tables/
 # Not run (not reported): thinned-homicide panels, c4/geo placebo jobsets, the S placebo grid. xd_placebo_boot_v3M.py writes
 # INCOMPLETE rows for those comparisons; Fig 6 and Fig 16 use only the complete nested_americas_rich_bpaper_capM rows.
 # =====================================================================================================================
@@ -315,6 +318,7 @@ pre_08() {
   local S sd; if ! on 02; then for S in M S L; do for sd in "${SDS[@]}"; do need data_model/repr_model_${S}_contrastive_e_fullsrc_loro_americas_s$sd.pt; done; done; fi
   absent outputs/crossdomain/xd_m_boot.csv outputs/crossdomain/xd_s_boot.csv outputs/crossdomain/xd_placebo_boot_v3M.csv
   absent $DI/xd_brazil_dengue_panel.parquet
+  absent outputs/crossdomain/brazil_cell_totals.csv outputs/crossdomain/brazil_summary.csv
   absent_glob "$DI/sim_*_events.parquet" 'outputs/crossdomain/*_capM*' 'outputs/crossdomain/*_capS*'
   for sd in "${SDS[@]}"; do absent outputs/crossdomain/preds_brazil_finetune_americas_s${sd}_rich_f0.01.npz outputs/crossdomain/preds_brazil_nested_americas_s${sd}_rich_bpaper.npz; done
 }
@@ -327,6 +331,7 @@ run_08() {
   B_TRF=$(job br_traffic tgv_trafprep trafprep_%j $CR_STD --cpus-per-task=4 --mem=96G --time=03:00:00 $(dep $DD) --export=ALL,TASK=br_traffic)
   B_PLA=$(job br_placebos tgv_plprep2 plprep2_%j $CR_STD --cpus-per-task=4 --mem=96G --time=08:00:00 $(dep $DD) --export=ALL,TASK=br_placebos)
   D_BR=$(ids $B_PAN $B_TRF $B_PLA)
+  J=$(job br_desc tgv_brdesc brdesc_%j $OPEN --cpus-per-task=2 --mem=16G --time=00:30:00 $(dep $D_BR) --export=ALL,TASK=br_desc); D_BRBOOT=$(ids $D_BRBOOT $J)
   # ---- M ----
   D=$(dep $(ids ${PRE[M]:-} $D_DATA $D_BR))
   H_M=$(job xd_head_M tgv_xdM xdM_%A_%a $G --array=0-5 $D --export=ALL,TASK=xd_head,XD_CAP=M)
