@@ -1,0 +1,41 @@
+% UPDATED 2026-10-26 (Claude): Panels A and B = M full-source (bootstrap_ci_M_fullsrc_{block5,cell}.csv). Panel C M full-source (bootstrap_ci_M_fullsrc_{block5,cell}_rand.csv, job 56803740).
+\begin{table}[!htbp]
+\centering\footnotesize
+\caption{Bootstrap intervals for the main comparisons (temporal test, PR-AUC differences)}
+\label{tab:boot_main}
+\begin{tabular}{lccc}
+\hline
+Held-out region & Estimate & 95\% interval, $5^\circ$ blocks & 95\% interval, single cells \\
+\hline
+\multicolumn{4}{l}{\textit{A. Base + embedding minus persistence}} \\
+Africa & +0.304 & [+0.288, +0.320] & [+0.298, +0.310] \\
+Americas & +0.345 & [+0.335, +0.355] & [+0.340, +0.351] \\
+Asia-Pacific & +0.307 & [+0.271, +0.330] & [+0.294, +0.318] \\
+Europe & +0.275 & [+0.235, +0.295] & [+0.263, +0.287] \\
+MENA & +0.311 & [+0.283, +0.342] & [+0.296, +0.323] \\
+South Asia & +0.317 & [+0.276, +0.331] & [+0.302, +0.329] \\
+All regions & +0.310 & [+0.296, +0.317] & [+0.305, +0.314] \\
+\hline
+\multicolumn{4}{l}{\textit{B. Base + embedding minus base}} \\
+Africa & +0.010 & [+0.008, +0.013] & [+0.009, +0.012] \\
+Americas & +0.006 & [+0.002, +0.010] & [+0.004, +0.008] \\
+Asia-Pacific & +0.031 & [+0.021, +0.042] & [+0.023, +0.038] \\
+Europe & +0.013 & [$-$0.001, +0.022] & [+0.006, +0.021] \\
+MENA & +0.005 & [+0.002, +0.011] & [+0.003, +0.008] \\
+South Asia & +0.010 & [+0.005, +0.019] & [+0.006, +0.014] \\
+All regions & +0.013 & [+0.009, +0.015] & [+0.011, +0.014] \\
+\hline
+\multicolumn{4}{l}{\textit{C. Pretrained minus random-weight encoder}} \\
+Africa & +0.003 & [+0.001, +0.005] & [+0.002, +0.004] \\
+Americas & +0.001 & [$-$0.000, +0.003] & [$-$0.000, +0.003] \\
+Asia-Pacific & +0.019 & [+0.009, +0.028] & [+0.013, +0.025] \\
+Europe & +0.001 & [$-$0.003, +0.007] & [$-$0.003, +0.006] \\
+MENA & +0.000 & [$-$0.002, +0.002] & [$-$0.002, +0.002] \\
+South Asia & +0.002 & [$-$0.002, +0.006] & [$-$0.001, +0.005] \\
+All regions & +0.005 & [+0.002, +0.007] & [+0.003, +0.006] \\
+\hline
+\end{tabular}
+\begin{minipage}{0.92\textwidth}\footnotesize\vspace{0.5ex}
+Notes. Estimates are means over three encoder seeds; persistence is violence in month $t$. Intervals are 95\% percentile intervals from 1,000 paired bootstrap replicates that resample test units within each held-out region, keeping all test months of a unit together and applying the same draw to every model and seed. Units are $5^\circ \times 5^\circ$ blocks of grid cells or single grid cells. Intervals hold the fitted models fixed. All regions is the equal-weight mean of the six regions.
+\end{minipage}
+\end{table}

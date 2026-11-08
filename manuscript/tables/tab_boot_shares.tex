@@ -1,0 +1,31 @@
+% UPDATED 2026-10-26 (Claude): M full-source, bootstrap_ci_M_fullsrc_block5_shares.csv (job 56803741).
+\begin{table}[!htbp]
+\centering\scriptsize\setlength{\tabcolsep}{2.5pt}
+\caption{Gain from the embedding with limited local data: estimates and 95\% spatial-block bootstrap intervals}
+\label{tab:boot_shares}
+\resizebox{\textwidth}{!}{\begin{tabular}{lccccccc}
+\hline
+ & \multicolumn{7}{c}{Share of the held-out region's training data} \\
+Held-out region & 0.25\% & 0.5\% & 0.75\% & 1\% & 2.5\% & 5\% & 10\% \\
+\hline
+Africa & +0.024 & +0.023 & +0.026 & +0.029 & +0.022 & +0.018 & +0.011 \\
+ & [+0.017, +0.031] & [+0.016, +0.033] & [+0.021, +0.032] & [+0.024, +0.036] & [+0.018, +0.026] & [+0.014, +0.022] & [+0.009, +0.015] \\[2pt]
+Americas & +0.022 & +0.020 & +0.017 & +0.022 & +0.023 & +0.019 & +0.012 \\
+ & [+0.014, +0.029] & [+0.014, +0.026] & [+0.012, +0.023] & [+0.018, +0.027] & [+0.020, +0.027] & [+0.015, +0.023] & [+0.008, +0.016] \\[2pt]
+Asia-Pacific & +0.037 & +0.017 & +0.026 & +0.013 & +0.024 & +0.035 & +0.017 \\
+ & [+0.012, +0.059] & [$-$0.006, +0.044] & [+0.006, +0.047] & [$-$0.012, +0.048] & [+0.003, +0.050] & [+0.017, +0.058] & [+0.006, +0.034] \\[2pt]
+Europe & $-$0.077 & $-$0.034 & $-$0.036 & $-$0.065 & $-$0.029 & $-$0.010 & +0.010 \\
+ & [$-$0.097, $-$0.044] & [$-$0.048, $-$0.012] & [$-$0.045, $-$0.017] & [$-$0.079, $-$0.039] & [$-$0.040, $-$0.013] & [$-$0.021, +0.010] & [$-$0.000, +0.022] \\[2pt]
+MENA & +0.009 & +0.016 & +0.012 & +0.015 & +0.018 & +0.015 & +0.008 \\
+ & [$-$0.003, +0.023] & [+0.011, +0.025] & [+0.004, +0.024] & [+0.008, +0.028] & [+0.013, +0.029] & [+0.010, +0.025] & [+0.004, +0.013] \\[2pt]
+South Asia & +0.031 & +0.043 & +0.037 & +0.035 & +0.026 & +0.020 & +0.010 \\
+ & [+0.019, +0.047] & [+0.027, +0.063] & [+0.025, +0.052] & [+0.025, +0.050] & [+0.018, +0.035] & [+0.013, +0.031] & [+0.002, +0.022] \\[2pt]
+\hline
+All regions & +0.008 & +0.014 & +0.014 & +0.008 & +0.014 & +0.016 & +0.011 \\
+ & [+0.002, +0.015] & [+0.009, +0.021] & [+0.010, +0.020] & [+0.004, +0.017] & [+0.010, +0.021] & [+0.012, +0.022] & [+0.008, +0.015] \\[2pt]
+\hline
+\end{tabular}}
+\begin{minipage}{0.98\textwidth}\footnotesize\vspace{0.5ex}
+Notes. Base + embedding minus base, both trained on the stated share of the held-out region's training months. Means over three encoder seeds and five draws of the training share. Brackets are 95\% intervals from 1,000 paired bootstrap replicates resampling $5^\circ \times 5^\circ$ blocks of grid cells; they hold the fitted models fixed.
+\end{minipage}
+\end{table}

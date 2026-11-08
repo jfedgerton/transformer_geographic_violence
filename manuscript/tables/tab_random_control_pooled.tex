@@ -1,0 +1,24 @@
+% UPDATED 2026-10-26 (Claude) to M full-source: same files, A_pooled_f0-4 means.
+\begin{table}[!htbp]
+\centering\footnotesize\setlength{\tabcolsep}{5pt}
+\caption{Political violence, pooled five-fold test: gain from a pretrained and a random encoder}
+\label{tab:random_pooled}
+\begin{tabular}{lccccc}
+\hline
+ & PR-AUC & \multicolumn{2}{c}{Gain over base} & Pretrained & Runs \\
+Held-out region & Base & Pretrained encoder & Random encoder & $-$ random & difference $>0$ \\
+\hline
+Africa & 0.544 & $+0.010$ & $+0.009$ & $+0.002$ & 3/3 \\
+Americas & 0.642 & $+0.009$ & $+0.006$ & $+0.003$ & 3/3 \\
+Asia-Pacific & 0.609 & $+0.008$ & $+0.006$ & $+0.001$ & 3/3 \\
+Europe & 0.662 & $+0.002$ & $+0.004$ & $-0.002$ & 0/3 \\
+MENA & 0.764 & $+0.005$ & $+0.004$ & $+0.001$ & 3/3 \\
+South Asia & 0.649 & $+0.009$ & $+0.008$ & $+0.002$ & 3/3 \\
+\hline
+All regions & 0.645 & $+0.007$ & $+0.006$ & $+0.001$ & 15/18 \\
+\hline
+\end{tabular}
+\begin{minipage}{0.98\textwidth}\footnotesize\vspace{0.5ex}
+Notes. Means over three encoder seeds. Gain over base is the PR-AUC of base + embedding minus base. The random encoder has the same architecture and random weights; the base model and test rows are identical across the two arms. Pooled scores average five folds.
+\end{minipage}
+\end{table}

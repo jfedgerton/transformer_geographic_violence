@@ -1,0 +1,33 @@
+% table_design_choices.tex -- maps each generic step in Figure fig:architecture to the
+% choice made in the conflict application. Values verified against
+% scripts/phase4_scaling/train_repr_obj.py (featset "e", capacity L, contrastive),
+% build_sequences_super.py, and transfer_eval_region*.py.
+% Braces grouping steps 1-5 and 6-8 are drawn with nicematrix (\SubMatrix), which sizes
+% them to the actual row heights. Requires \usepackage{nicematrix} (already in main.tex).
+\begin{table}[t]
+\centering
+\caption{Design choices in the conflict application.}
+\label{tab:design}
+\small
+\begin{NiceTabular}{@{}c@{\hspace{5mm}}>{\raggedright\arraybackslash}p{0.27\textwidth}p{0.65\textwidth}@{}}
+\toprule
+ & Step in Figure~\ref{fig:architecture} & Choice in this paper \\
+\midrule
+\Block{5-1}<\rotate\scriptsize>{Build the encoder\\ (Figure~\ref{fig:architecture}, Panel A)}
+ & 1. Unit and records & PRIO-GRID cell-month; records are ACLED and UCDP events in the cell over the prior 12 months, keeping the 200 most recent \\
+ & 2. Fields and vocabularies & 7 fields: event type, sub-event type, actor 1, actor 2, two actor types, and month offset (months before the unit's month, 1--12); the 500 most frequent actors are kept, the rest map to ``unknown'' \\
+ & 3. Embedding & $d = 128$, one embedding table per field \\
+ & 4. Unit-level context & 34 PRIO-GRID covariates, z-scored and added to the summary token; time enters only through the month-offset field \\
+ & 5. Encoder & 4 layers, 8 attention heads, feed-forward width $4d$ \\
+%\midrule
+\Block{4-1}<\rotate\scriptsize>{Pretrain, then transfer\\ (Figure~\ref{fig:architecture}, Panel B)}
+ & 6. Pretraining & Contrastive (NT-Xent, normalized temperature-scaled cross-entropy; temperature $\tau = 0.1$); views made by dropping 15\% of records; sources are five of six world regions; trained on months through 2020, early stopping on 2021 \\
+ & 7a. Frozen transfer & $f$ is XGBoost (gradient-boosted trees) with lagged violence, event counts, time since the last event, spatial lag, and PRIO-GRID covariates as $x_u$ \\
+ & 7b. Fine-tuning & 0.25, 0.5, 0.75, 1, 2.5, 5, and 10\% of target-region training data \\
+ & 8. Evaluation & Held-out region; violence in the cell next month; PR-AUC on forecasts from January 2022 on \\
+\bottomrule
+\CodeAfter
+  \SubMatrix\{{2-2}{6-3}.[xshift=1mm]
+  \SubMatrix\{{7-2}{10-3}.[xshift=1mm]
+\end{NiceTabular}
+\end{table}

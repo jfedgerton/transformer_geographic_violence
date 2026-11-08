@@ -1,0 +1,24 @@
+% UPDATED 2026-10-26 (Claude) to the M full-source encoders: eval_region_M_contrastive_e_fullsrc_loro_* (A_pooled_f0-4 means, incidence). Persistence (month t) column unchanged: it does not depend on the encoder (base and month t-1 persistence reproduce the old values exactly).
+\begin{table}[!htbp]
+\centering\footnotesize\setlength{\tabcolsep}{4pt}
+\caption{Held-out regions, pooled five-fold test: persistence, base model and base model with the embedding (PR-AUC)}
+\label{tab:nested_embbase}
+\begin{tabular}{lcccccc}
+\hline
+ & \multicolumn{3}{c}{PR-AUC} & Base + emb. & Base + emb. & Runs \\
+Held-out region & Persistence & Base & Base + emb. & $-$ persistence & $-$ base & gain $>0$ \\
+\hline
+Africa & 0.237 & 0.544 & 0.555 & $+0.317$ & $+0.010$ & 3/3 \\
+Americas & 0.278 & 0.642 & 0.650 & $+0.372$ & $+0.009$ & 3/3 \\
+Asia-Pacific & 0.261 & 0.609 & 0.617 & $+0.356$ & $+0.008$ & 3/3 \\
+Europe & 0.326 & 0.662 & 0.664 & $+0.338$ & $+0.002$ & 3/3 \\
+MENA & 0.426 & 0.764 & 0.770 & $+0.344$ & $+0.005$ & 3/3 \\
+South Asia & 0.306 & 0.649 & 0.658 & $+0.352$ & $+0.009$ & 3/3 \\
+\hline
+All regions & 0.306 & 0.645 & 0.652 & $+0.347$ & $+0.007$ & 18/18 \\
+\hline
+\end{tabular}
+\begin{minipage}{0.98\textwidth}\footnotesize\vspace{0.5ex}
+Notes. Means over three encoder seeds (123, 456, 789). Target is any violent event in the 0.5$^\circ$ cell in month $t+1$; all models use information through month $t$. Persistence is the presence of violence in month $t$. Base is gradient boosting on hand-built and PRIO-GRID features; Base + emb. adds the frozen encoder embedding. Runs gain $>0$ counts region-seed runs in which Base + emb. beats Base. Pooled scores average five folds drawn over cell-months. Persistence measured in month $t-1$ averages 0.285.
+\end{minipage}
+\end{table}

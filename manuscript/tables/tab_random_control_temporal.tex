@@ -1,0 +1,24 @@
+% UPDATED 2026-10-26 (Claude) to M full-source: eval_region_M_contrastive_e_fullsrc_loro_*_s{seed}.csv vs *_rand.csv (B_temporal, incidence).
+\begin{table}[!htbp]
+\centering\footnotesize\setlength{\tabcolsep}{5pt}
+\caption{Political violence, temporal test: gain from a pretrained and a random encoder}
+\label{tab:random_temporal}
+\begin{tabular}{lccccc}
+\hline
+ & PR-AUC & \multicolumn{2}{c}{Gain over base} & Pretrained & Runs \\
+Held-out region & Base & Pretrained encoder & Random encoder & $-$ random & difference $>0$ \\
+\hline
+Africa & 0.661 & $+0.010$ & $+0.008$ & $+0.003$ & 3/3 \\
+Americas & 0.698 & $+0.006$ & $+0.004$ & $+0.001$ & 3/3 \\
+Asia-Pacific & 0.716 & $+0.031$ & $+0.012$ & $+0.019$ & 3/3 \\
+Europe & 0.672 & $+0.013$ & $+0.011$ & $+0.001$ & 2/3 \\
+MENA & 0.820 & $+0.005$ & $+0.005$ & $+0.000$ & 1/3 \\
+South Asia & 0.575 & $+0.010$ & $+0.008$ & $+0.002$ & 2/3 \\
+\hline
+All regions & 0.690 & $+0.013$ & $+0.008$ & $+0.005$ & 14/18 \\
+\hline
+\end{tabular}
+\begin{minipage}{0.98\textwidth}\footnotesize\vspace{0.5ex}
+Notes. Means over three encoder seeds. Gain over base is the PR-AUC of base + embedding minus base. The random encoder has the same architecture and random weights; the base model and test rows are identical across the two arms. Temporal test as in Figure~\ref{fig:loro_gains}.
+\end{minipage}
+\end{table}

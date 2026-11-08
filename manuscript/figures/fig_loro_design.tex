@@ -1,0 +1,64 @@
+% fig_loro_design.tex -- Figure 2, one row x two columns. A: frozen embedding, exercises (1)-(2). B: fine-tuning, exercise (3).
+% Requires \usepackage{graphicx} and \usetikzlibrary{patterns,arrows.meta}
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize,
+  src/.style={draw=white,line width=0.6pt,fill=blue!55!black!45},
+  hold/.style={draw=white,line width=0.6pt,fill=gray!12,postaction={pattern=north east lines,pattern color=gray!60}},
+  head/.style={draw=white,line width=0.6pt,fill=teal!55},
+  tst/.style={draw=white,line width=0.6pt,fill=orange!75!red!70},
+  box/.style={draw=gray!70,rounded corners=2pt,fill=white,align=center,inner sep=2.5pt,font=\scriptsize,text width=2.95cm,minimum height=0.95cm},
+  arr/.style={-{Stealth[length=3.5pt]},gray!70,line width=0.6pt},
+  cmp/.style={anchor=west,font=\scriptsize}]
+\def\regs{{"Africa","MENA","Europe","Americas","South Asia","Asia-Pacific"}}
+% ================= Panel A =================
+\node[anchor=west,font=\footnotesize\bfseries] at (-1.0,5.4) {A.\ Frozen embedding (exercises 1--2)};
+\node[font=\scriptsize\bfseries,align=center,anchor=south] at (1.72,3.75) {Six regions\\[-2pt]hatched = held out};
+\node[font=\scriptsize,align=left,anchor=west,rotate=90] at (4.13,3.75) {Pretrain\\[-2pt]$\leq$2020};
+\node[font=\scriptsize,align=left,anchor=west,rotate=90] at (4.91,3.75) {Stop\\[-2pt]2021};
+\node[font=\scriptsize,align=left,anchor=west,rotate=90] at (5.69,3.75) {Head\\[-2pt]$\leq$2020};
+\node[font=\scriptsize,align=left,anchor=west,rotate=90] at (7.09,3.75) {Test\\[-2pt]2022+};
+\foreach \i in {0,...,5}{ \pgfmathsetmacro{\yy}{3.4-\i*0.62}
+  \node[anchor=east,font=\scriptsize] at (-0.05,\yy) {Fold \the\numexpr\i+1\relax};
+  \foreach \j in {0,...,5}{ \ifnum\i=\j \fill[hold] (\j*0.58,\yy-0.26) rectangle ++(0.54,0.52);
+    \else \fill[src] (\j*0.58,\yy-0.26) rectangle ++(0.54,0.52); \fi }
+  \fill[src] (3.76,\yy-0.26) rectangle ++(0.74,0.52);
+  \fill[src,opacity=0.55] (4.54,\yy-0.26) rectangle ++(0.74,0.52);
+  \fill[head] (5.32,\yy-0.26) rectangle ++(0.74,0.52);
+  \pgfmathsetmacro{\lab}{\regs[\i]}
+  \fill[tst] (6.10,\yy-0.26) rectangle ++(1.98,0.52);
+  \node[font=\scriptsize\bfseries,white] at (7.09,\yy) {\lab}; }
+\draw[gray!60] (3.62,0.0) -- (3.62,5.0);
+\node[cmp] at (-1.0,-0.3)  {(1) Persistence vs.\ base + embedding};
+\node[cmp] at (-1.0,-0.65) {(2) Base features vs.\ base + embedding};
+% ================= Panel B =================
+\begin{scope}[xshift=8.75cm]
+\node[anchor=west,font=\footnotesize\bfseries] at (-0.3,5.4) {B.\ Fine-tuning (exercise 3), one fold};
+\node[anchor=south,font=\scriptsize\bfseries] at (2.90,3.75) {Held-out region rows, 1990--2020};
+\fill[hold] (-0.3,3.14) rectangle (6.1,3.66);
+\foreach \x/\w in {-0.06/0.024,0.79/0.048,1.63/0.085,2.48/0.121,3.38/0.205,4.35/0.326,5.25/0.507}{
+  \fill[head] (\x,3.14) rectangle ++(\w,0.52);}
+\node[font=\scriptsize,align=center] at (2.90,2.78) {Slices of $n$\% of rows, 5 stratified draws per share};
+\node[box] (ft) at (1.30,1.55) {Pretrained encoder\\[-1pt]\textbf{updated} on slice};
+\node[box] (sc) at (4.50,1.55) {Same network\\[-1pt]random init, slice only};
+\draw[arr] (1.30,2.52) -- (ft.north);
+\draw[arr] (4.50,2.52) -- (sc.north);
+\fill[tst] (-0.3,0.04) rectangle (6.1,0.56);
+\node[font=\scriptsize\bfseries,white] at (2.90,0.3) {Test on held-out region, 2022+};
+\draw[arr] (ft.south) -- (1.30,0.61);
+\draw[arr] (sc.south) -- (4.50,0.61);
+\node[cmp] at (-0.3,-0.3) {(3) Fine-tuned vs.\ from scratch at each share};
+\end{scope}
+% ================= Legend =================
+\begin{scope}[yshift=-1.35cm,xshift=1.2cm]
+\fill[src] (0,0) rectangle ++(0.35,0.3); \node[anchor=west] at (0.4,0.15) {Pretrain encoder};
+\fill[hold] (2.9,0) rectangle ++(0.35,0.3); \node[anchor=west] at (3.3,0.15) {Held out of pretraining};
+\fill[head] (6.6,0) rectangle ++(0.35,0.3); \node[anchor=west] at (7.0,0.15) {Target-region training};
+\fill[tst] (10.2,0) rectangle ++(0.35,0.3); \node[anchor=west] at (10.6,0.15) {Evaluated};
+\end{scope}
+\end{tikzpicture}%
+}
+\caption{Leave-one-region-out design. In each fold the encoder is pretrained on five regions and scored on the held-out region. Panel A holds the encoder fixed and trains a gradient-boosted head on the held-out region's 1990--2020 rows. Panel B updates the encoder on small slices of those rows against the same network trained from scratch.}
+\label{fig:loro}
+\end{figure}

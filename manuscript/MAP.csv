@@ -1,0 +1,44 @@
+manuscript_file,pipeline_file,produced_by,sha256_16,check
+figures/fig_loro_gains.pdf,figures_tables/v5_20261108/fig3_loro_gains/fig_loro_gains.pdf,scripts/replication_v5/figures.R fig3,0d3c34ea5769f15a,identical_except_pdf_dates
+figures/fig_cell_alerts_maps_nested_M_fullsrc.png,figures_tables/v5_20261108/fig4_cell_maps/fig_cell_alerts_maps_nested_M_fullsrc.png,scripts/replication_v5/figures.R fig4,0281e5a339fc0052,identical
+figures/fig_finetune_gains.pdf,figures_tables/v5_20261108/fig5_finetune_gains/fig_finetune_gains.pdf,scripts/replication_v5/figures.R fig5,1e896dca70d2d122,identical_except_pdf_dates
+figures/fig_placebo_gradient_ab_M.pdf,figures_tables/v5_20261108/fig6_brazil/fig_placebo_gradient_ab_M.pdf,scripts/replication_v5/figures.R fig6,9b74b6d02a9c0c56,identical_except_pdf_dates
+figures/fig_random_encoder.png,figures_tables/v5_20261108/fig9_random_encoder/fig_random_encoder.png,scripts/replication_v5/figures.R fig9,89462603688ab8f4,identical
+figures/fig_boot_shares_M.png,figures_tables/v5_20261108/fig10_share_curve/fig_boot_shares.png,scripts/replication_v5/figures.R fig10,f2f1d037e1e923e8,identical
+figures/fig_ukraine_f0025_full_1_invasion.pdf,outputs/ukraine_maps_M_f0025/fig_ukraine_f0.0025_M_fullsrc_full_1_invasion.pdf,figures.R --one ukr_map (stage 08),ae7bd8f2ef7adabc,identical
+figures/fig_ukraine_f0025_full_2_counteroffensives.pdf,outputs/ukraine_maps_M_f0025/fig_ukraine_f0.0025_M_fullsrc_full_2_counteroffensives.pdf,figures.R --one ukr_map (stage 08),0fa5ed37a482d427,identical
+figures/fig_ukraine_f0025_full_3_southern_offensive.pdf,outputs/ukraine_maps_M_f0025/fig_ukraine_f0.0025_M_fullsrc_full_3_southern_offensive.pdf,figures.R --one ukr_map (stage 08),78434acdbc87d041,identical
+figures/fig_ukraine_f0025_full_4_2024_2025.pdf,outputs/ukraine_maps_M_f0025/fig_ukraine_f0.0025_M_fullsrc_full_4_2024_2025.pdf,figures.R --one ukr_map (stage 08),e974802991bbe5b4,identical
+figures/fig_ukraine_alert_gain_full.pdf,outputs/ukraine_alert_gain_M_full/fig_ukraine_alert_gain_M_fullsrc_full.pdf,figures.R --one ukr_gain (stage 08),05d60bac281266e3,identical
+figures/fig_brazil_deaths_map.pdf,figures_tables/fig_brazil_deaths_map.pdf,scripts/crossdomain/fig_brazil_deaths_map.R (br_desc),049c309e3862437d,identical
+figures/fig_placebo_gradient.pdf,figures_tables/v5_20261108/fig16_brazil_random/fig_placebo_gradient_M.pdf,scripts/replication_v5/figures.R fig16,78d9e4daff3cade8,identical_except_pdf_dates
+figures/fig_boot_share_regions_M.png,figures_tables/v5_20261108/fig17_share_regions/fig_boot_share_regions.png,scripts/replication_v5/figures.R fig17,8c138e04de929afa,identical
+figures/fig_boot_persistence_M.png,figures_tables/v5_20261108/fig18_persistence_gap/fig_boot_persistence.png,scripts/replication_v5/figures.R fig18,462d4c2e3ac6e0d1,identical
+figures/fig_cell_alerts_countries_wide_M_fullsrc.png,outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc_print_opt4b_countries_wide.png,figures.R --one fig19 (stage 08),4095a0a9112cbcb5,identical
+tables/table3_nested_embbase.tex,figures_tables/tables_v5_20261108b/tab_nested_embbase.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+tables/tab_random_control_temporal.tex,figures_tables/tables_v5_20261108b/tab_random_temporal.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+tables/tab_random_control_pooled.tex,figures_tables/tables_v5_20261108b/tab_random_pooled.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+tables/table2_pretrained_1pct.tex,figures_tables/tables_v5_20261108b/tab_pretrained_1pct.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+tables/tab_boot_main.tex,figures_tables/tables_v5_20261108b/tab_boot_main.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+tables/tab_boot_shares.tex,figures_tables/tables_v5_20261108b/tab_boot_shares.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+tables/tab_brazil_summary.tex,figures_tables/tab_brazil_summary.tex,scripts/crossdomain/brazil_descriptives.py (br_desc),,numbers_identical
+main.tex tab:ukraine_ft,figures_tables/tables_v5_20261108b/tab_ukraine_ft.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:domains,figures_tables/tables_v5_20261108b/tab_domains.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:brazil,figures_tables/tables_v5_20261108b/tab_brazil.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:civilian_remap,figures_tables/tables_v5_20261108b/tab_civilian_remap.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:onset_subsets,figures_tables/tables_v5_20261108b/tab_onset_subsets.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:sizes_frozen,figures_tables/tables_v5_20261108b/tab_sizes_frozen.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:sizes_finetune_full,figures_tables/tables_v5_20261108b/tab_sizes_finetune_full.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:sizes_finetune,figures_tables/tables_v5_20261108b/tab_sizes_finetune.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:sizes_brazil,figures_tables/tables_v5_20261108b/tab_sizes_brazil.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:share_months,figures_tables/tables_v5_20261108b/tab_share_months.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:finetune_grid_full,figures_tables/tables_v5_20261108b/tab_finetune_grid_full.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+main.tex tab:finetune_grid,figures_tables/tables_v5_20261108b/tab_finetune_grid.tex,scripts/replication_v5/make_tables.py,,numbers_identical
+figures/fig_architecture.tex,,static LaTeX (no data),,copied
+figures/fig_loro_design.tex,,static LaTeX (no data),,copied
+figures/fig_pipeline.tex,,static LaTeX (no data),,copied
+tables/table_design_choices.tex,,static LaTeX (no data),,copied
+bibliography.bib,,static LaTeX (no data),,copied
+chicago-ff.sty,,static LaTeX (no data),,copied
+chicago-ff.bst,,static LaTeX (no data),,copied
+quiver.sty,,static LaTeX (no data),,copied
