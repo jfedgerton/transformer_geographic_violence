@@ -757,7 +757,9 @@ for label, arm in [("finetune_grid_full", "full"), ("finetune_grid", "top2")]:
     if arm == "full":
         # the note states that the ALL interval excludes zero at every share
         assert all((x["lo95"] > 0) or (x["hi95"] < 0) for x in allr), "note claim fails: an ALL interval covers zero"
-        extra = ""
+        # 95% block-bootstrap interval of the ALL row, leading zero dropped (as printed in the manuscript)
+        ci = lambda v: ("%.3f" % v).replace("0.", ".", 1)
+        extra = "\n & " + " & ".join("{\\scriptsize [%s, %s]}" % (ci(x["lo95"]), ci(x["hi95"])) for x in allr) + " \\\\"
         note = r"""Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds (123, 456, 789) and five draws of the training share. All parameters of the encoder and the output layer are tuned. Both networks choose their learning rate and weight decay on 2021 validation data. Forecasts are made from January 2022 onward. The mean row is the equal-weight mean across the six regions, and its 95\% bootstrap interval, which resamples $5^\circ \times 5^\circ$ blocks of grid cells, excludes zero at every share."""
     else:
         extra = "\nRuns $>0$ (\\%) & " + " & ".join(pct_int(npos[sh] / 90.0) for sh in SHARES) + " \\\\"
