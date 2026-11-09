@@ -1,0 +1,9 @@
+{
+ "sample_hash": "25a2bacb836e5dc0a1183dd61523530f34c4ff349ac86ede6844a90030f524f5",
+ "files": {
+  "incidence": "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast/outputs/ens_fullsrc/preds_baseline_mt_incidence.npz",
+  "civilian": "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast/outputs/ens_fullsrc/preds_baseline_mt_civilian.npz",
+  "onset": "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast/outputs/ens_fullsrc/preds_baseline_mt_onset.npz",
+  "fatal25": "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast/outputs/ens_fullsrc/preds_baseline_mt_fatal25.npz"
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "tag": "L_contrastive_e_fullsrc_all_s789",
+ "sample_hash": "25a2bacb836e5dc0a1183dd61523530f34c4ff349ac86ede6844a90030f524f5",
+ "lr": 0.0003,
+ "epoch": 5,
+ "stop_pr_mean": 0.6828555577853614,
+ "stop_pr": {
+  "incidence": 0.8530647472948796,
+  "civilian": 0.698749491289627,
+  "onset": 0.5875764663113733,
+  "fatal25": 0.5920315262455659
+ },
+ "files": {
+  "incidence": "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast/outputs/ens_fullsrc/preds_mt_incidence_L_contrastive_e_fullsrc_all_s789.npz",
+  "civilian": "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast/outputs/ens_fullsrc/preds_mt_civilian_L_contrastive_e_fullsrc_all_s789.npz",
+  "onset": "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast/outputs/ens_fullsrc/preds_mt_onset_L_contrastive_e_fullsrc_all_s789.npz",
+  "fatal25": "/storage/group/LiberalArts/default/jfe4_collab/tensor_geographic_violence/conflict_forecast/outputs/ens_fullsrc/preds_mt_fatal25_L_contrastive_e_fullsrc_all_s789.npz"
+ }
+}
