@@ -120,7 +120,7 @@
 \clearpage\maketitle
 
 \begin{abstract}
-Transfer learning has transformed prediction in vision and language but remains rare in political science outside text. I develop a pipeline for pretraining transformer encoders on structured event records and test whether an encoder pretrained on political violence events generalizes to world regions it never saw. Under a leave-one-region-out design, I compare it against a persistence model, a gradient-boosted model without the encoder’s embedding, and the same network trained from scratch (starting from random rather than pretrained parameters) on 0.25 to 10 percent of the held-out region’s data. I then apply the encoder to homicide, suicide, traffic deaths, and drowning in Brazil. The embedding improves forecasts in every held-out region, fine-tuning helps only when local labels are very scarce, and the encoder improves prediction of some new outcomes. To my knowledge, this is the first political science study to pretrain a transformer encoder on structured event records and reuse it for transfer learning, with implications for data-poor settings.
+Transfer learning has transformed prediction in vision and language but remains rare in political science outside these data. I develop a pipeline for pretraining transformer encoders on structured event records and test whether an encoder pretrained on political violence events generalizes to world regions it never saw during pretraining. Under a leave-one-region-out design, I compare the pretrained encoder against a persistence baseline, a gradient-boosted model without the encoder’s embedding, and the same network trained from scratch on 0.25 to 10 percent of the held-out region’s data. I then apply the encoder to four new outcomes, homicide, suicide, traffic deaths, and drowning in Brazil. The embedding improves forecasts in every held-out region. Fine-tuning helps only when local labels are very scarce. To my knowledge, this is the first political science study to pretrain a transformer encoder on structured event records and reuse it for transfer learning, with implications for data-poor settings.
 \end{abstract}
 \begin{center}
 \textbf{Keywords:} Transfer Learning $|$ Pretrained Encoders $|$ Structured Event Data $|$ Domain Adaptation $|$ Political Violence\\
@@ -133,14 +133,14 @@ Transfer learning has transformed prediction in vision and language but remains 
 
 \section{Introduction}
 \label{sec:intro}
-Transformers and related deep learning architectures have helped scholars improve their research across multiple domains, including labeling data \citep{burnham2026debate, timoneda2025bert}, extracting features from multimodal data \citep{tarr2023automated, wu2022marmot, zhang2019casm}, and creating latent measures \citep{lemens2024positioning, rodriguez2023embedding}, among other areas of study \citep{halterman2025synthetic, wankmuller2024neural}. These advances have benefited from transfer learning, which reuses representations learned during initial training, or pretraining, to improve prediction in a target setting \citep{burnham2026debate, choi2026finetuned, laurer2024less, sui2026high}. Much of the political science scholarship that uses transfer learning relies on pretrained embeddings from text, image, audio, or video data.  However, transformers can learn representations from many forms of data, beyond these sources. Other disciplines have already put this into practice. Biochemists train transformers on molecular representations to predict properties relevant to drug discovery \citep{chithrananda2020chemberta}, genomicists apply them to raw DNA sequences to predict regulatory elements \citep{ji2021dnabert}, and climate scientists use them to forecast weather and climate patterns from simulation and reanalysis data \citep{nguyen2023climax}.
+Transformers and related deep learning architectures have helped scholars improve their research across multiple domains, including labeling data \citep{burnham2026debate, timoneda2025bert}, extracting features from multimodal data \citep{tarr2023automated, wu2022marmot, zhang2019casm}, and creating latent measures \citep{lemens2024positioning, rodriguez2023embedding}, among other areas of study \citep{halterman2025synthetic, wankmuller2024neural}. These advances have benefited from transfer learning, which reuses representations learned during initial training, or pretraining, to improve prediction in a target setting \citep{burnham2026debate, choi2026finetuned, laurer2024less, sui2026high}. Much of the political science scholarship that uses transfer learning relies on pretrained embeddings---numerical vectors that summarize an input---from text, image, audio, or video data.  However, transformers---neural networks that model how each part of an input relates to every other part---can learn representations from many forms of data beyond these sources, including the structured records, such as events, roll-call votes, or treaty provisions, that make up much of the discipline's data. Other disciplines have already put this into practice. Biochemists train transformers on molecular representations to predict properties relevant to drug discovery \citep{chithrananda2020chemberta}, genomicists apply them to raw DNA sequences to predict regulatory elements \citep{ji2021dnabert}, and climate scientists use them to forecast weather and climate patterns from simulation and reanalysis data \citep{nguyen2023climax}.
 
 Together, these applications suggest that transformers are especially useful when (a) high-dimensional pretraining data already exist and (b) little new data are available for the target task. Both conditions apply to conflict forecasting. Rich event data exist, recording the location, type, actors, and fatalities of each event. However, conflict forecasters are often built with data from a single region or country, which limits the data available to them \citep{dorff2020networks, hegre2019views, radford2022highres}. This poses two challenges. First, forecasting tends to be weakest in places with little recent history of violence, such as countries experiencing civil or interstate war after a long period of peace \citep{hegre2019views, mueller2018reading}. Second, regions with less violence provide fewer positive training examples for within-region forecasters. A transformer that uses transfer learning may therefore be especially useful for early-warning prediction in these data-scarce settings.
 
-I propose a general pipeline for pretraining transformer encoders on structured event records, in which each unit is a set of records described by categorical fields, and apply it to political violence. I test geographic transfer learning with a spatial encoder that maps a grid cell's event history and geographic context into a learned vector, or embedding. To do so, I use event data from the Armed Conflict Location and Event Data (ACLED) project \citep{raleigh2010acled} and the Uppsala Conflict Data Program (UCDP) \citep{sundberg2013ucdp}, aggregating individual events into a panel of 0.5-degree PRIO-GRID cell-months and harmonizing event types across the two sources. I evaluate geographic transfer with a leave-one-region-out protocol across six world regions---Africa, Middle East and North Africa (MENA), Europe, the Americas, South Asia, and Asia-Pacific.\footnote{See Appendix Section~\ref{app:harmonize} for country-to-region assignments.} In each fold, I pretrain the encoder on five source regions and apply it in the sixth, target region, where the downstream forecaster is trained on local labels, or observed outcomes.
+I propose a general pipeline for pretraining transformer encoders---models that read a set of inputs and compress them into an embedding---on structured event records, in which each unit is a set of records described by categorical fields, and apply it to political violence. I test geographic transfer learning with a spatial encoder that maps a grid cell's event history and geographic context into an embedding. To do so, I use event data from the Armed Conflict Location and Event Data (ACLED) project \citep{raleigh2010acled} and the Uppsala Conflict Data Program (UCDP) \citep{sundberg2013ucdp}, aggregating individual events into a panel of 0.5-degree PRIO-GRID cell-months and harmonizing event types across the two sources. I evaluate geographic transfer with a leave-one-region-out (LORO) protocol across six world regions---Africa, Middle East and North Africa (MENA), Europe, the Americas, South Asia, and Asia-Pacific.\footnote{See Appendix Table~\ref{tab:data_regions} for cells, events, and coverage by region.} In each fold, I pretrain the encoder on five source regions and apply it in the sixth, target region, where the downstream forecaster is trained on local labels, or observed outcomes.
 
 
-First, as a simple reference point, I compare a gradient-boosted forecaster that uses the embedding from a frozen pretrained encoder, whose parameters are held fixed, alongside baseline features (recent violence, event counts, and grid-cell covariates) with a persistence model, which predicts next month's violence from the current month. Second, I compare that forecaster against the same gradient-boosted forecaster using baseline features alone, which isolates what the embedding adds. Third, I fine-tune the pretrained encoder, updating all its parameters, on between 0.25 and 10 percent of the held-out region's training data and compare it with the same network trained from scratch on the same data. Next, I assess cross-outcome transfer by using the frozen conflict encoder's embedding to forecast counts of homicide, suicide, traffic deaths, and drowning in Brazil. This exploratory exercise tests whether representations learned from conflict events improve forecasts of other spatial processes. 
+I test the encoder across three exercise. First, as a simple reference point, I compare a gradient-boosted forecaster that uses the embedding from a frozen pretrained encoder, whose parameters are held fixed, alongside baseline features (recent violence, event counts, and grid-cell covariates) with a persistence model, which predicts next month's violence from the current month. Second, I compare that forecaster against the same gradient-boosted forecaster using baseline features alone, which isolates what the embedding adds. Third, I fine-tune the pretrained encoder, updating all its parameters, on between 0.25 and 10 percent of the held-out region's training data and compare it with the same network trained from scratch on the same data. After conducting the LORO exercises, I assess cross-outcome transfer by using the frozen conflict encoder's embedding to forecast counts of homicide, suicide, traffic deaths, and drowning in Brazil. This exploratory exercise tests whether representations learned from conflict events improve forecasts of other spatial processes. 
 
 Overall, I find support for this approach. The forecaster with the embedding beats persistence in all six held-out regions, and appending the embedding to the gradient-boosted model improves forecasts in all six with no tuning of the forecaster. Pretraining also helps under a clear boundary condition. With 0.25 percent of the region's training data, the fine-tuned encoder outperforms the same network trained from scratch in five of the six regions (no change in Africa), but the average advantage turns negative once the network sees 2.5 percent or more. Finally, the Brazil exercise suggests that the encoder can also improve forecasts beyond conflict. Similar to pretrained text and image embeddings, the out-of-domain results indicate that spatial encoders could be broadly used for transfer learning and forecasting on geographic data.
 
@@ -154,7 +154,7 @@ My article draws from two streams of literature: (a) research on transformers \c
 \subsection{Transformer Development and Use Cases}
 The use of transformers and related deep learning architectures has rapidly expanded within political science \citep{hu2022conflibert, brandt2026extractive, halterman2025synthetic}, with a large share of the scholarship relying on these tools for data classification exercises \citep{timoneda2025bert, laurer2024less, sui2026high} and identifying characteristics or attributes in high-dimensional data \citep{tarr2023automated, zhang2019casm}.
 
-The first group of research in this area has analyzed how transformers can support classification and measurement \citep{heseltine2024large, dileo2025mapping, halterman2025synthetic, choi2026finetuned}. \cite{brandt2026extractive} compare the classification accuracy of domain-specific encoders---or models that read and represent inputs---against all-purpose generative models. Their findings support the use of domain-specific encoders such as ConfliBERT for conflict-text classification. %A similar set of scholarship has assessed how decoders---or models that generate text by predicting the next token---can be used for data labeling as zero-shot classifiers, or models that classify data without task-specific training \citep{}. %\footnote{The generative models discussed here, including the GPT, Llama, Gemma, and Qwen families, are decoder-only transformers. Encoder-decoder transformers such as T5 \citep{raffel2020t5} pair both components and are less common in political science applications.} 
+The first group of research in this area has analyzed how transformers can support classification and measurement \citep{heseltine2024large, dileo2025mapping, halterman2025synthetic, choi2026finetuned}. \cite{brandt2026extractive} compare the classification accuracy of domain-specific encoders against all-purpose generative models. Their findings support the use of domain-specific encoders such as ConfliBERT for conflict-text classification. %A similar set of scholarship has assessed how decoders---or models that generate text by predicting the next token---can be used for data labeling as zero-shot classifiers, or models that classify data without task-specific training \citep{}. %\footnote{The generative models discussed here, including the GPT, Llama, Gemma, and Qwen families, are decoder-only transformers. Encoder-decoder transformers such as T5 \citep{raffel2020t5} pair both components and are less common in political science applications.} 
 Other data labeling work has bridged the two approaches \citep{laurer2024less, burnham2026debate, halterman2026codebook}. \cite{halterman2026codebook} show that training large language models with labeled examples improves their ability to classify political text according to a codebook.
 
 %The second group of research in this area has analyzed how transformers can be used to create and validate measures \citep{griswold2026stay, rodriguez2023embedding, bonikowski2022politics}. \cite{lemens2024positioning} show that instruction-tuned large language models (LLMs) can position political texts on ideological scales. Across tweets, senator statements, party manifestos, and multilingual policy speeches, they find that averaging repeated LLM judgments correlates above 0.90 with expert, crowd, and roll-call benchmarks and outperforms supervised classifiers. Other research has explored how generative models can support survey research \citep{argyle2023out, mellon2024ais, velez2025confronting}. \cite{argyle2023out} condition GPT-3 on the demographic profiles of real survey respondents and show that the resulting synthetic samples reproduce subgroup response distributions. In contrast, other work has demonstrated that synthetic responses from generative models underestimate the variance in human responses to survey questions \citep{bisbee2024synthetic}, suggesting that these data cannot fully replace human data.
@@ -164,7 +164,7 @@ The second group of research in this area has shown how computational and deep l
 Researchers have extensively used statistical and machine learning approaches to forecast conflict processes. Much of the early work used logistic regression or tree-based approaches for forecasting \citep{goldstone2010pitf, ward2010perils, muchlinski2016comparing, blair2020forecasting, hegre2019views}. %This work produced substantial gains where violence is already under way, but forecasting the onset of violence or changes in its intensity has proven far harder, and many models fail to outperform simple persistence or no-change baselines on these tasks \citep{vesco2022united, mueller2018reading}.
 Recent scholarship has turned to text-derived features \citep{mueller2018reading} and deep learning, including convolutional and recurrent networks \citep{radford2022highres}, and has begun to apply transformer architectures to conflict time series \citep{walterskirchen2024tft}. \cite{radford2022highres} uses a convolutional long short-term memory network to forecast violence at the PRIO-GRID cell-month level, using a grid of 0.5$^\circ$ cells covering Africa, so that each cell's forecast draws on the recent history of violence in surrounding cells.
 
-Other work has adopted ensemble approaches, pooling information across models to improve forecasts \citep{beger2014irregular, montgomery2012ebma, vesco2022united}. \cite{hegre2019views} combine several models to forecast state-based conflict, non-state conflict, and one-sided violence against civilians. The authors train models on different groups of features, such as conflict history, natural and social geography, protest, and political institutions, and pool their estimates. For state-based conflict at the grid-cell-month level, the resulting ensemble reaches an area under the precision--recall curve (PR-AUC) of $0.277$, with higher values indicating better forecasting.
+Other work has adopted ensemble approaches by pooling information across models to improve forecasts \citep{beger2014irregular, montgomery2012ebma, vesco2022united}. \cite{hegre2019views} combine several models to forecast state-based conflict, non-state conflict, and one-sided violence against civilians. The authors train models on different groups of features, such as conflict history, natural and social geography, protest, and political institutions, and pool their estimates. For state-based conflict at the grid-cell-month level, the resulting ensemble reaches an area under the precision--recall curve (PR-AUC) of $0.277$, with higher values indicating better forecasting.
 
 \subsection{Contribution}
 Although there is extensive research on applications of transformers \citep{brandt2026extractive, halterman2025synthetic} and on conflict forecasting \citep{dorff2020networks, hegre2025views, mueller2018reading, radford2022highres}, few studies combine these approaches. This is especially true for scholarship examining the use of transfer learning in political processes. This gap is notable for two reasons.
@@ -204,17 +204,17 @@ In both cases, predictions are evaluated out of sample, in periods after the tra
 \label{sec:application}
 To demonstrate that a transformer architecture can be used for transfer learning on high-dimensional, non-media data, I develop and validate a transformer for conflict forecasting. Table~\ref{tab:design} displays the design choices.\footnote{See Appendix Section~\ref{app:supp} for a visualization of the data pipeline.} 
 
-In step 1, I create units from the PRIO-GRID cell-month ($0.5^\circ \times 0.5^\circ$, about 55 km at the equator) \citep{tollefsen2012priogrid} and records from ACLED \citep{raleigh2010acled} and UCDP \citep{sundberg2013ucdp} events that occurred in that cell over the prior 12 months. For a forecast of violence in month $t+1$, the sequence contains events from months $t-12$ through $t-1$. The baseline features and the persistence model use information through month $t$, so the embedding enters the forecaster with one month less event history than the features it is compared against.\footnote{See Appendix Section~\ref{app:harmonize} for data releases, coverage, harmonization, and forecast cutoffs.} 
+In step 1, I create units from the PRIO-GRID cell-month ($0.5^\circ \times 0.5^\circ$, about 55 km at the equator) \citep{tollefsen2012priogrid} and records from ACLED \citep{raleigh2010acled} and UCDP \citep{sundberg2013ucdp} events that occurred in that cell over the prior 12 months. For a forecast of violence in month $t+1$, the sequence contains events from months $t-12$ through $t-1$. Persistence and the months-since-last-event feature use month $t$, so the embedding enters the forecaster with one month less event history than those comparisons.\footnote{See Appendix Sections~\ref{app:harmonize} and~\ref{app:fields} for coverage, harmonization, and forecast cutoffs.} 
 
 In step 2, I define seven fields: (a) event type (e.g., battles, violence against civilians, protests), (b) sub-event type (e.g., armed clash, air or drone strike, attack), (c) the first actor (e.g., a national military), (d) the second actor (e.g., a named rebel group), (e) the first actor's type (e.g., state forces, rebel group, identity militia), (f) the second actor's type (e.g., civilians, protesters, political militia), and (g) the month offset, which records how many months before the unit's month the event occurred (1 to 12).\footnote{See Appendix Section~\ref{app:fields} for information on each of these fields.}
 
-In step 3, I create one embedding table per field, in which each row is a 128-dimensional vector ($d = 128$) with values initially drawn at random from a standard normal distribution. Values that do not appear in an encoder's pretraining data, such as actors active only in the held-out region, share a single unknown row. In step 4, I add 34 static PRIO-GRID covariates, which are standardized, projected to the embedding dimension, and added to the summary token \citep{tollefsen2012priogrid}. In step 5, the encoder is given four layers, each with eight attention heads and a feed-forward block of width 512 ($4d$), and is trained with a learning rate (the optimizer's step size) of $5 \times 10^{-4}$. In step 6, I pretrain the encoder with a contrastive objective \citep{chen2020simclr}, in which two views of each cell-month are created by dropping each record independently with probability 0.15 and the encoder learns to match the two views of the same cell-month while separating different cell-months. The objective makes the representation stable to the record-dropping augmentation. Pretraining uses months through December 2020, with 2021 held out for early stopping, and during pretraining the encoder never sees the held-out region or any month from 2022 onward.
+In step 3, I create one embedding table per field, in which each row is a 128-dimensional vector ($d = 128$) with values initially drawn at random from a standard normal distribution. Values that do not appear in an encoder's pretraining data, such as actors active only in the held-out region, share a single unknown row. In step 4, I add 27 static PRIO-GRID covariates (land cover, terrain, child malnutrition, infant mortality, travel time to the nearest city, and agricultural and climate conditions; Appendix Table~\ref{tab:prio_summary}), which are standardized, projected to the embedding dimension, and added to the summary token \citep{tollefsen2012priogrid}. In step 5, the encoder is given four layers, each with eight attention heads and a feed-forward block of width 512 ($4d$), and is trained with a learning rate (the optimizer's step size) of $5 \times 10^{-4}$. In step 6, I pretrain the encoder with a contrastive objective \citep{chen2020simclr}, in which two views of each cell-month are created by dropping each record independently with probability 0.15 and the encoder learns to match the two views of the same cell-month while separating different cell-months. The objective makes the representation stable to the record-dropping augmentation. Pretraining uses months through December 2020, with 2021 held out for early stopping, and during pretraining the encoder never sees the held-out region or any month from 2022 onward.
 
 
 \input{tables/table_design_choices.tex}
 
 \subsection{Out-of-Sample Forecast}
-After pretraining is complete, I test the encoder in two ways across three exercises. First, in step 7a the frozen embedding is concatenated with the baseline features (lagged violence, event counts, time since the last event, spatial lag (mean violence in the four neighboring cells the prior month), and PRIO-GRID covariates) in an XGBoost (gradient-boosted tree) forecaster, which is compared with (a) a persistence model and (b) the same forecaster using the baseline features alone.\footnote{I use XGBoost because tree-based learners are standard in grid-cell conflict forecasting, including the Violence and Impacts Early-Warning System (ViEWS) \citep{hegre2021views2020} and gradient-boosted entries to the ViEWS prediction competition \citep{vestby2022gradient}. The XGBoost settings are fixed in advance and identical in both forecasters, so neither benefits from tuning.} In step 7b, the encoder is fine-tuned on a small share of the held-out region's training data, with all of its parameters and an output layer trained, and compared with the same network trained from scratch on the same rows. 
+After pretraining is complete, I test the encoder in two ways across three exercises. First, in step 7a the frozen embedding is concatenated with the baseline features (violence in months $t-1$, $t-3$, and $t-6$; counts of violent and all events; months since the last event; the share of the four adjacent cells with violence in month $t-1$; and the PRIO-GRID covariates; Appendix Section~\ref{app:features}) in an XGBoost (gradient-boosted tree) forecaster, which is compared with (a) a persistence model and (b) the same forecaster using the baseline features alone.\footnote{I use XGBoost because tree-based learners are standard in grid-cell conflict forecasting, including the political Violence Early-Warning System (ViEWS) \citep{hegre2021views2020} and gradient-boosted entries to the ViEWS prediction competition \citep{vestby2022gradient}. The XGBoost settings are fixed in advance (Appendix Section~\ref{app:encoder_details}) and identical in both forecasters, so neither benefits from tuning.} In step 7b, the encoder is fine-tuned on a small share of the held-out region's training data, with all of its parameters and an output layer trained, and compared with the same network trained from scratch on the same rows. 
 
 In step 8, I evaluate these approaches by PR-AUC\footnote{Conflict models are trained through 2020 and validated on 2021. I compute PR-AUC as average precision, summarizing precision (the share of alerts that are correct) across recall levels (the share of violent observations detected). Higher PR-AUC indicates better forecasting. I use PR-AUC because violent cell-months are rare, and it rewards ranking those few cell-months highly without being inflated by the many peaceful ones. For the persistence model, whose forecast is yes or no, average precision is computed from that single threshold.} on forecasts of whether any violent event (battles, explosions or remote violence, or violence against civilians) occurs in each grid cell of the held-out region in the following month, made from January 2022 through April 2025 (so forecast outcomes run from February 2022 to May 2025).\footnote{April 30, 2025 is the last day of data used for forecasting; the final forecasts are of violence in May 2025. See Appendix Section~\ref{app:ensemble} for alternative conflict outcomes.}
 
@@ -222,14 +222,14 @@ In step 8, I evaluate these approaches by PR-AUC\footnote{Conflict models are tr
 I assess the transfer learning exercise against three comparison models: (a) a persistence model, which carries the outcome in month $t$ forward to month $t+1$; (b) an XGBoost forecaster trained on the baseline features alone (hereafter the base model; with the embedding, the base plus embedding model), which is nested within the forecaster that adds the embedding (hereafter the nested comparison; step 7a in Figure~\ref{fig:architecture}); and (c) the same transformer network trained from scratch (the comparison for step 7b in Figure~\ref{fig:architecture}). Each trained baseline uses the same rows of the held-out region's data as the model it is compared with. The persistence model helps answer whether the models offer any benefit compared with a naive guess. %---i.e., whether the model tells us anything beyond predicting that the next period will match the prior period. 
 For the nested exercise, the XGBoost forecaster with the baseline features helps answer whether adding the encoder's embedding improves a model trained on the same data. The network trained from scratch offers the most direct test of pretraining, because it uses the same architecture as the fine-tuned encoder and differs only in starting from random values rather than pretrained ones. Both networks read the same inputs, so actor values the pretrained encoder never saw are coded as unknown for the scratch network as well. 
 
-Figure~\ref{fig:loro} Panel A displays the design for the first and second exercises, which compare the XGBoost forecaster that includes the embedding against the persistence model and against the same forecaster without the embedding. For these exercises, I keep the encoders frozen to see if training only from other regions adds predictive value. In total, I fit 18 encoders, one for each combination of the six regions and three random seeds (values controlling random choices during training). Each encoder leaves one region out (LORO)---e.g., in fold 1, three encoders (one per seed) are fit on the Middle East and North Africa (MENA), Europe, the Americas, South Asia, and Asia-Pacific, with Africa left out as the transfer learning test region. The XGBoost forecasters are trained on the held-out region's data from January 1990 to December 2020, which the encoder never saw. 
+Figure~\ref{fig:loro} Panel A displays the design for the first and second exercises, which compare the XGBoost forecaster that includes the embedding against the persistence model and against the same forecaster without the embedding. For these exercises, I keep the encoders frozen to see if training only from other regions adds predictive value. In total, I fit 18 encoders, one for each combination of the six regions and three random seeds (values controlling random choices during training). Each encoder leaves out a region---e.g., in fold 1, three encoders (one per seed) are fit on the Middle East and North Africa (MENA), Europe, the Americas, South Asia, and Asia-Pacific, with Africa left out as the transfer learning test region. The XGBoost forecasters are trained on the held-out region's data from January 1990 to December 2020, which the encoder never saw. 
 
 \input{figures/fig_loro_design.tex}
 
 Figure~\ref{fig:loro} Panel B displays the design for the third exercise, in which I fine-tune the pretrained encoder on 0.25\%, 0.5\%, 0.75\%, 1\%, 2.5\%, 5\%, and 10\% of the held-out region's data from 1990 to 2020. For each share, I draw five stratified random samples that preserve the held-out region's share of violent cell-months, and I average results across the five draws and three seeds.\footnote{Appendix Table~\ref{tab:share_months} reports training sample sizes. Section~\ref{app:shares} repeats the frozen-embedding comparison at the same shares, and Section~\ref{app:ft_details} provides fine-tuning details.} If the pretrained encoder adds predictive value, I would expect these gains to be most pronounced when there is little training data. 
 
 \subsubsection{Model Performance}
-For the three exercises, I compare models by the difference in PR-AUC over the held-out region's test period, averaged across three encoder seeds (123, 456, and 789) and, for the third exercise, the five draws, with 95\% paired bootstrap intervals from 1,000 replicates that resample $5^\circ \times 5^\circ$ blocks of grid cells and keep all test months of a block together. Violence is correlated across neighboring cells and consecutive months, so resampling single cell-months would make the intervals too narrow. Each block covers 100 grid cells, both models are scored on the same resampled blocks, and the intervals hold the fitted models fixed, so they reflect uncertainty from which locations are observed.\footnote{The XGBoost forecasters and the training-data draws use a fixed seed (123). See Appendix Section~\ref{app:bootstrap} for the resampling procedure and the sources of uncertainty covered by the intervals.} 
+For the three exercises, I compare models by the difference in PR-AUC over the held-out region's test period, averaged across three encoder seeds (123, 456, and 789) and, for the third exercise, the five draws,\footnote{In the third exercise, each share of the held-out region's 1990--2020 training cell-months is drawn five times, sampling violent and quiet cell-months separately so that every draw keeps the region's base rate. The pretrained and scratch networks are both trained on each draw. The draws use a fixed seed (123) and do not depend on the encoder seed, so the 15 runs at each share cross five training samples with three encoder initializations. Draws are drawn independently at each share rather than nested. Early stopping uses the region's 2021 cell-months, drawn at the same share in the same way, with a floor of ten violent cell-months, so at the smallest shares the validation sample can exceed the nominal share.} with 95\% paired bootstrap intervals from 1,000 replicates that resample $5^\circ \times 5^\circ$ blocks of grid cells and keep all test months of a block together.\footnote{Violence is correlated across neighboring cells and consecutive months, so resampling single cell-months would make the intervals too narrow.} Each block covers 100 grid cells, both models are scored on the same resampled blocks, and the intervals hold the fitted models fixed, so they reflect uncertainty from which locations are observed.\footnote{In each replicate, the same resampled blocks are applied to both models and to every seed and draw, and the statistic is the mean difference across those runs. Regions are resampled independently, and the six-region estimate is the equal-weight mean of the regional estimates. The XGBoost forecasters use a fixed seed (123). See Appendix Section~\ref{app:bootstrap} for the full procedure. Because the models are not refit, the intervals do not include variation from encoder initialization or from which training cell-months are drawn. That variation enters the estimates only through the average over seeds and draws. The Brazil comparisons in Section~\ref{sec:brazil} use a two-way bootstrap that also resamples seed and draw pairs.}
 
 To express PR-AUC differences in substantive terms, I count true alarms. Specifically, for each model I rank all of the held-out region’s test cell-months by its predicted probability and flag the $k$ highest-ranked cell-months as alerts.\footnote{Setting $k$ from the number of violent test cell-months uses the realized test prevalence, so it is an evaluation convention that holds the alert budget fixed across models rather than an operational alert rule. An agency would fix its budget before observing the test period.} A true alarm is a flagged cell-month with violence in the following month, and a false alarm is a flagged cell-month without it. In each comparison exercise both models flag the same number of cell-months, so every additional true alarm replaces a false alarm.\footnote{Against persistence, $k$ is the number of cell-months persistence flags (those with violence in the current month).} In all other comparisons, $k$ equals the number of violent cell-months in the test period. 
 
@@ -306,7 +306,7 @@ In this article, I demonstrate how transformers can be used in transfer learning
 First, I argue that transformers can be used for transfer learning across many unexplored domains in political science when high-dimensional data already exist. However, the main encoder is trained only on conflict data. In Appendix Section~\ref{app:domains}, I seek to address this issue with three alternative transfer learning exercises: (a) forecasting validated voter turnout in different regions using Cooperative Election Study (CES) data; (b) crime forecasting across cities in the United States; and (c) forecasting dengue spread across municipalities in Brazil. Each application pretrains its own domain-specific encoder and shows forecasting gains when local data are scarcest, with the gains persisting at larger shares for turnout and crime. %Specifically, with 0.25 percent of the training data, fine-tuning the pretrained encoder improves on the same network trained from scratch by +0.033 for CES turnout prediction, +0.085 for crime outcomes, and +0.059 for disease spread (Appendix Section~\ref{app:domains}). These correspond to 1,204, 3,799, and 121 more true alarms and 1,204, 3,799, and 121 fewer false alarms, respectively.
 
 
-Second, I show that the inclusion of a pretrained encoder is useful for transfer learning in my forecasts. Notably, this does not rule out that the encoder architecture, rather than its pretraining, drives the observed gains. I address this in Appendix Section~\ref{app:random} by comparing the main results against a randomly initialized encoder in the same LORO design. A randomly initialized encoder with the same architecture recovers a portion of the embedding's gain, but the pretrained encoder scores higher in 14 of 18 region-seed runs (one-sided binomial test, $p = 0.015$), with a mean gain of +0.005 PR-AUC (95\% CI [0.002, 0.007]). 
+Second, I show that the inclusion of a pretrained encoder is useful for transfer learning in my forecasts. Notably, this does not rule out that the encoder architecture, rather than its pretraining, drives the observed gains. I address this in Appendix Section~\ref{app:random} by comparing the main results against a randomly initialized encoder in the same LORO design. A randomly initialized encoder with the same architecture recovers a portion of the embedding's gain, but the pretrained encoder scores higher in 14 of 18 region-seed runs, with a mean gain of +0.005 PR-AUC (95\% CI [0.002, 0.007]). 
 
 %Third, for the main analyses, I pretrain the encoder with a contrastive objective. In turn, the observed results could be driven in part by that choice. I address this issue in Appendix Table~\ref{tab:ar_baseline} by pretraining the encoder with an autoregressive objective, which learns to predict the next event in a sequence, and evaluating it on 26 held-out countries. Adding this embedding improves the base model in all 15 combinations of feature set and seed (five feature sets; Appendix Sections~\ref{app:ar} and~\ref{app:pooled}).
 
@@ -350,7 +350,7 @@ The limitations notwithstanding, this article advances political scientists' und
 This section contains supplementary details on the data pipeline, the encoder, and additional results. % EDIT: was "supplementary materials and tables on the data and figures"
 
 \subsection{Data Pipeline}
-Figure~\ref{fig:pipeline} groups the code by stage. Stage 01 builds the cell-month panel, the event records, and the baseline features. Stage 02 pretrains 18 leave-one-region-out encoders for each encoder size. Stages 03 and 04 run the frozen-embedding comparisons and the fine-tuning grids, and stages 05 and 06 compute the bootstrap intervals and alert counts. Stages 07 and 08 build and evaluate the Ukraine case, the Brazil mortality outcomes, and the turnout, crime, and dengue applications. Stage 09 writes every figure and table. A single driver (\texttt{pipeline/run.sh}) checks all inputs before submitting any job and then submits each stage through one job script (\texttt{pipeline/tasks.sbatch}). Raw ACLED data and the trained encoders are not distributed, in keeping with ACLED's terms of use.
+Figure~\ref{fig:pipeline} groups the code by stage. Stage 01 builds the cell-month panel, the event records, and the baseline features. Stage 02 pretrains 18 leave-one-region-out encoders for each encoder size. Stages 03 and 04 run the frozen-embedding comparisons and the fine-tuning grids, and stages 05 and 06 compute the bootstrap intervals and alert counts. Stages 07 and 08 build and evaluate the Ukraine case, the Brazil mortality outcomes, and the turnout, crime, and dengue applications. Stage 09 writes every figure and table. A single driver script checks all inputs before submitting any job and then submits each stage through one job script. Raw ACLED data and the trained encoders are not distributed, in keeping with ACLED's terms of use.
 
 \input{figures/fig_pipeline.tex}
 
@@ -361,7 +361,9 @@ In every field except the month offset, one is used for unknown values, meaning 
 
 Whether to add positional encodings depends on the data. They are needed when the order of records carries meaning, as with words in a sentence, and can be omitted when records form an unordered set, with any timing information entered as a field. Here the records in a cell-month form an unordered set, so no positional encodings are used and timing enters through the month-offset field.
 
-Following \citet{chen2020simclr}, the contrastive loss is computed on a small projection of the two embeddings rather than on the embeddings themselves. The positive pair is two augmented views of the same cell-month, and every other cell-month in the batch is treated as a negative, including cell-months with similar event histories. Grouping similar histories together is therefore a property the representation may learn, not something the loss enforces directly. Pretraining runs for at most 30 epochs and stops when the contrastive loss on the 2021 validation data has not improved for 15 consecutive epochs. The XGBoost settings are maximum depth 6, learning rate 0.1, subsample 0.8, column subsample 0.8, and 200 rounds.
+Following \citet{chen2020simclr}, the contrastive loss is computed on a small projection of the two embeddings rather than on the embeddings themselves. The positive pair is two augmented views of the same cell-month, and every other cell-month in the batch is treated as a negative, including cell-months with similar event histories. Grouping similar histories together is therefore a property the representation may learn, not something the loss enforces directly. Pretraining runs for at most 30 epochs and stops when the contrastive loss on the 2021 validation data has not improved for 15 consecutive epochs. The encoder kept is the last epoch that lowered the validation loss by more than 0.001. Early stopping ended training before the cap in 13 of the 18 main-text encoders, 15 of the 18 large encoders, and 6 of the 18 small encoders; the remaining runs stopped at the fixed 30-epoch cap \citep{prechelt1998early, goodfellow2016deep}. The XGBoost settings are maximum depth 6, learning rate 0.1, subsample 0.8, column subsample 0.8, and 200 rounds.
+
+The encoder specification, including the contrastive objective and the feature set, was chosen at an earlier stage of the project, before the leave-one-region-out design was adopted. At that stage, candidate designs were pretrained without 26 withheld countries and scored on the post-2021 test months. The test months were therefore not untouched when the specification was chosen. The encoders reported in this article were retrained from scratch under the final design, and the encoder size was chosen separately on the 2021 validation months.
 
 \subsection{Frozen Embedding Comparison}
 In the main text, I compare the frozen embedding against a persistence model and an XGBoost forecaster with and without the embedding. Table~\ref{tab:nested_embbase} displays point estimates for the same comparisons under the pooled evaluation, in which test cell-months are drawn across all years in five folds. The table reports the base plus embedding model against persistence and the base model with and without the embedding. The gains in the pooled evaluation are smaller than in the temporal test.
@@ -385,7 +387,7 @@ In the main text, I compare the frozen embedding against a persistence model and
 \label{app:random}
 In the main text, I assess whether a pretrained encoder can be used for transfer learning. Here, I assess how much of the transfer effect is due to the encoder's architecture versus its pretraining. To do so, I compare the main results against an XGBoost model that uses an encoder with the same architecture and random initialization for the LORO nested analyses.
 
-Table~\ref{tab:random_temporal} displays the results of the nested models against a randomly initialized encoder. The pretrained encoder improves on the base model by +0.013, while the random encoder improves on it by +0.008. The pretrained encoder beats the random encoder in 14 of 18 region-seed runs. This suggests that pretraining accounts for +0.005 PR-AUC (95\% block bootstrap interval [+0.002, +0.007]). For the pooled estimates, the gap is +0.001 and positive in 15 of 18 runs (see Table~\ref{tab:random_pooled} for point estimates and Figure~\ref{fig:random} for a comparison of both tests).
+Table~\ref{tab:random_temporal} displays the results of the nested models against a randomly initialized encoder. The pretrained encoder improves on the base model by +0.013, while the random encoder improves on it by +0.008. The pretrained encoder beats the random encoder in 14 of 18 region-seed runs. This suggests that pretraining accounts for +0.005 PR-AUC (95\% block bootstrap interval [+0.002, +0.007]). For the pooled estimates,\footnote{Pooled results use five-fold cross-validation with cell-months assigned to folds at random. Because the training folds include the same cell's earlier and later months and its neighboring cells, the pooled test measures interpolation rather than forecasting or transfer over time.} the gap is +0.001 and positive in 15 of 18 runs (see Table~\ref{tab:random_pooled} for point estimates and Figure~\ref{fig:random} for a comparison of both tests). The pooled test is valuable as a contrast. When the model already has information on nearby months and cells, the advantage from pretraining nearly disappears, which is consistent with pretraining helping most when the forecast must go beyond the local data the model has seen.
 
 \input{tables/tab_random_control_temporal.tex}
 \input{tables/tab_random_control_pooled.tex}
@@ -400,7 +402,7 @@ Table~\ref{tab:random_temporal} displays the results of the nested models agains
 % MOVED from the main text 2026-10-16
 \section{Frozen Embedding With Minimal Local Data}
 \label{app:shares}
-Table~\ref{tab:pretrained_1pct} displays model performance when the held-out region's training data are limited to between 0.25 and 10 percent. I compare held-out region performance for a forecaster using the frozen embedding and features versus a features-alone forecaster; the encoder itself is never retrained. In five of six regions (Africa, the Americas, Asia-Pacific, MENA and South Asia), the frozen embeddings improve model performance at every share, with gains of +0.008 to +0.043. With 1 percent of the training data, the models with the frozen embeddings improve the PR-AUC in five regions, with gains of +0.013 to +0.035 in those regions. Averaged over all six regions, the gain at 1 percent is +0.008 [+0.004, +0.017], and the average gain is positive at every share from 0.25 to 10 percent (Figure~\ref{fig:boot_shares}). Europe is the exception. With very few violent training cell-months (15 at 0.25 percent and 59 at 1 percent), adding the embedding lowers performance at every share below 10 percent. In the five regions that gain at 1 percent, issuing the same number of alerts, the models with the frozen embeddings flag 2,018 more violent cell-months, and therefore raise as many fewer false alarms.
+Table~\ref{tab:pretrained_1pct} displays model performance when the held-out region's training data are limited to between 0.25 and 10 percent. I compare held-out region performance for a forecaster using the frozen embedding and features versus a features-alone forecaster; the encoder itself is never retrained. In five of six regions (Africa, the Americas, Asia-Pacific, MENA and South Asia), the frozen embeddings improve model performance at every share, with gains of +0.008 to +0.043. With 1 percent of the training data, the models with the frozen embeddings improve the PR-AUC in five regions, with gains of +0.013 to +0.035 in those regions. Averaged over all six regions, the gain at 1 percent is +0.008 [+0.004, +0.017], and the average gain is positive at every share from 0.25 to 10 percent (Figure~\ref{fig:boot_shares}). Europe is the exception. With very few violent training cell-months (15 at 0.25 percent and 59 at 1 percent), adding the embedding lowers performance at every share below 10 percent. In the five regions that gain at 1 percent, issuing the same number of alerts, the models with the frozen embeddings flag 2,018 more violent cell-months and therefore raise 2,018 fewer false alarms.
 
 \input{tables/table2_pretrained_1pct.tex}
 \begin{figure}[!htbp]
@@ -415,7 +417,7 @@ Table~\ref{tab:pretrained_1pct} displays model performance when the held-out reg
 \label{sec:ukraine}
 In Section~\ref{sec:finetune}, I show that the pretrained encoder can be used for transfer learning in new regions. Here, I ground those findings by assessing whether the pretrained encoder improves out-of-sample prediction using the 2022 Russia-Ukraine War. This conflict offers a useful case for two reasons. First, the conflict unfolded outside of the training window, allowing me to assess the transformer on data that it has not been trained on. Second, the 2022 Russia-Ukraine War has been especially lethal, with estimates of 100,000 to 140,000 Ukrainian and 275,000 to 325,000 Russian military deaths through December 2025 \citep{jones2026grinding}. These features make the war a demanding test of whether the pretrained encoder is useful for forecasting violence in a new war.
 
-To assess the model, I score the Europe hold-out models from Section~\ref{sec:finetune} on Ukraine's grid cells alone, without retraining. Ukraine contributes 13,200 test cell-months, 4,745 of them violent, constituting two-thirds of Europe's violent test cell-months. With 0.25 percent of Europe's training data, the fine-tuned encoder beats the network trained from scratch in Ukraine by +0.134 [+0.106, +0.161], more than twice its average across regions (+0.053), and it scores higher in all 15 seed and draw runs (Table~\ref{tab:ukraine_ft}). The advantage is also clear at 1 percent (+0.085 [+0.067, +0.101]) but is uneven at the other shares, ranging from $-$0.014 at 0.75 percent to +0.032 at 10 percent.\footnote{With 0.25 percent of the data, the fine-tuned encoder beats persistence in Ukraine (PR-AUC of 0.66, against 0.64 for persistence), while the network trained from scratch does not (0.52); from 0.5 percent on, the fine-tuned encoder scores 0.70 to 0.82.}
+To assess the model, I score the Europe hold-out models from Section~\ref{sec:finetune} on Ukraine's grid cells alone, without retraining. Ukraine contributes 13,200 test cell-months, 4,745 of them violent, about two-thirds of Europe's violent test cell-months. With 0.25 percent of Europe's training data, the fine-tuned encoder beats the network trained from scratch in Ukraine by +0.134 [+0.106, +0.161], more than twice its average across regions (+0.053), and it scores higher in all 15 seed and draw runs (Table~\ref{tab:ukraine_ft}). The advantage is also clear at 1 percent (+0.085 [+0.067, +0.101]) but is uneven at the other shares, ranging from $-$0.014 at 0.75 percent to +0.032 at 10 percent.\footnote{With 0.25 percent of the data, the fine-tuned encoder beats persistence in Ukraine (PR-AUC of 0.66, against 0.64 for persistence), while the network trained from scratch does not (0.52); from 0.5 percent on, the fine-tuned encoder scores 0.70 to 0.82.}
 
 
 \begin{table}[t]
@@ -441,10 +443,10 @@ Runs $>0$ (\%) & 80 & 67 & 60 & 80 & 47 & 67 & 67 \\
 Europe (all cells) & +0.045 & $-$0.012 & $-$0.053 & +0.019 & $-$0.053 & $-$0.037 & +0.006 \\
 \hline
 \end{tabular}}
-\caption*{\footnotesize \textit{Note:} Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds and five draws of the training share. The models are the Europe hold-out models from Section~\ref{sec:finetune}, scored on Ukraine's 13,200 test cell-months (forecasts made January 2022 to April 2025) without retraining. Rows are grouped by fine-tuning arm: all parameters of the encoder and the output layer tuned (the arm in Section~\ref{sec:finetune}), and only the top two transformer layers and the output layer tuned. Runs $>0$ is the share of the 15 seed and draw runs in which the pretrained encoder scores higher in Ukraine. The Europe row is the same comparison across all of Europe's test cells.}
+\caption*{\footnotesize \textit{Note:} Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds and five draws of the training share. The models are the Europe hold-out models from Section~\ref{sec:finetune}, scored on Ukraine's 13,200 test cell-months (forecasts made January 2022 to April 2025) without retraining. Rows are grouped by fine-tuning arm: all parameters of the encoder and the output layer tuned (the arm in Section~\ref{sec:finetune}), and only the top two transformer layers, the final layer normalization, and the output layer tuned. Runs $>0$ is the share of the 15 seed and draw runs in which the pretrained encoder scores higher in Ukraine. The Europe row is the same comparison across all of Europe's test cells.}
 \end{table}
 
-Figure~\ref{fig:ukraine_invasion} visualizes the forecasts during the first six months of the invasion.\footnote{I show the forecasts at 0.25 percent of Europe's training data, the share at which the fine-tuned encoder's advantage over the network trained from scratch in Ukraine is largest over the full test period. Table~\ref{tab:ukraine_ft} reports every share.} In these months, the forecast averaged across the 15 runs fine-tuned on 0.25 percent of Europe's training data identifies 465 of the 798 violent cell-months, against 466 for the averaged network trained from scratch at the same number of alerts, so in this window it beats persistence and matches the scratch network (PR-AUC of 0.626 against 0.624 and 0.571). Over the full test period the fine-tuned encoder pulls ahead of the scratch network (Table~\ref{tab:ukraine_ft}).
+Figure~\ref{fig:ukraine_invasion} visualizes the forecasts during the first six months of the invasion.\footnote{I show the forecasts at 0.25 percent of Europe's training data, the share at which the fine-tuned encoder's advantage over the network trained from scratch in Ukraine is largest over the full test period. Table~\ref{tab:ukraine_ft} reports every share.} In these months, the forecast averaged across the 15 runs fine-tuned on 0.25 percent of Europe's training data identifies 465 of the 798 violent cell-months, against 466 for the averaged network trained from scratch at the same number of alerts, so in this window it beats persistence and matches the scratch network (PR-AUC of 0.626, against 0.571 for persistence and 0.624 for the scratch network).
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_ukraine_f0025_full_1_invasion.pdf}
@@ -454,37 +456,37 @@ Figure~\ref{fig:ukraine_invasion} visualizes the forecasts during the first six 
 
 \subsection{Ukraine Forecast Maps}
 \label{app:ukraine_maps}
-Figure~\ref{fig:ukraine_alert_gain} shows where the fine-tuned encoder changes Ukraine forecasts at the two ends of the data-scarcity range. With 0.25 percent of Europe's training data the pretrained model adds correct alerts across most of the country, and with 10 percent the gains and losses roughly offset. This is the spatial counterpart of the $+0.134$ at 0.25 percent and $+0.032$ at 10 percent reported in Table~\ref{tab:ukraine_ft}.
+Figure~\ref{fig:ukraine_alert_gain} shows where the fine-tuned encoder changes Ukraine forecasts at the two ends of the data-scarcity range. With 0.25 percent of Europe's training data the pretrained model gains in far more cells than it loses, and with 10 percent the gains and losses roughly offset. This is the spatial counterpart of the $+0.134$ at 0.25 percent and $+0.032$ at 10 percent reported in Table~\ref{tab:ukraine_ft}.
 
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_ukraine_alert_gain_full.pdf}
-\caption{Where the pretrained encoder changes Ukraine forecasts, by the amount of local fine-tuning data. Each 0.5-degree cell is shaded by the number of correct alerts gained minus false alerts added by the pretrained, fine-tuned model relative to the same architecture trained from scratch, summed over the 40 target months February 2022 to May 2025. Both models flag the same number of cell-months, a budget equal to the 4,745 violent cell-months in the window, following the equal-budget convention of Figure~\ref{fig:cell_maps}. Blue marks cells where the pretrained model gains, red where it loses, on one symmetric scale shared by both panels. Counts beyond plus or minus 20 are clipped to the ends of the scale, which affects 28 of 660 cells. Gray marks cells with violent events but no change in alerts, and cells with neither events nor change are left as unshaded land. At 0.25 percent of Europe's training data the pretrained model gains in 175 cells and loses in 43, a net of 1,652 cell-months. At 10 percent it gains in 84 and loses in 73, a net of 84.}
+\caption{Where the pretrained encoder changes Ukraine forecasts, by the amount of local fine-tuning data. Each 0.5-degree cell is shaded by the number of correct alerts gained minus false alerts added by the pretrained, fine-tuned model relative to the same architecture trained from scratch, summed over the 40 target months February 2022 to May 2025. Both models flag the same number of cell-months, a budget equal to the 4,745 violent cell-months in the window, following the equal-budget convention of Figure~\ref{fig:cell_maps}. Blue marks cells where the pretrained model gains, red where it loses, on one symmetric scale shared by both panels. Counts beyond plus or minus 20 are clipped to the ends of the scale, which affects 28 of the 660 cells shown across the two panels (330 per panel). Gray marks cells with violent events but no change in alerts, and cells with neither events nor change are left as unshaded land. At 0.25 percent of Europe's training data the pretrained model gains in 175 cells and loses in 43, a net of 1,652 cell-months (826 additional true alarms). At 10 percent it gains in 84 and loses in 73, a net of 84 (42 additional true alarms).}
 \label{fig:ukraine_alert_gain}
 \end{figure}
 
 
-Figures~\ref{fig:ukraine_invasion}, \ref{fig:ukraine_counter}, \ref{fig:ukraine_south}, and~\ref{fig:ukraine_2024} display the forecasts during the invasion, the counteroffensives, the southern front, and the 2024 to 2025 fighting. These maps compare the averaged forecast from the pretrained encoder against persistence. The averaged forecast improves on persistence by +0.055 PR-AUC during the invasion (Figure~\ref{fig:ukraine_invasion}), +0.087 during the counteroffensives (Figure~\ref{fig:ukraine_counter}), +0.144 on the southern front (Figure~\ref{fig:ukraine_south}), and +0.171 from August 2024 to May 2025 (Figure~\ref{fig:ukraine_2024}). Over the full test period, the averaged forecast reaches a PR-AUC of 0.76, against 0.64 for persistence and 0.66 for the average single run. The gain over the averaged network trained from scratch grows over the war, from +0.001 during the invasion to +0.186, +0.244, and +0.264 in the three later periods.
+Figures~\ref{fig:ukraine_invasion}, \ref{fig:ukraine_counter}, \ref{fig:ukraine_south}, and~\ref{fig:ukraine_2024} display the forecasts during the invasion, the counteroffensives, the southern front, and the 2024 to 2025 fighting. These maps compare the averaged forecast from the pretrained encoder against persistence. The averaged forecast improves on persistence by +0.055 PR-AUC during the invasion (Figure~\ref{fig:ukraine_invasion}), +0.087 during the counteroffensives (Figure~\ref{fig:ukraine_counter}), +0.144 on the southern front (Figure~\ref{fig:ukraine_south}), and +0.171 from August 2024 to May 2025 (Figure~\ref{fig:ukraine_2024}). The gain over the averaged network trained from scratch grows over the war, from +0.001 during the invasion to +0.186, +0.244, and +0.264 in the three later periods.
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_ukraine_f0025_full_2_counteroffensives.pdf}
-\caption{Forecasts of Violence in Ukraine, August 2022 to January 2023. Cells are 0.5-degree PRIO-GRID cells assigned to Ukraine. Shading is the forecast probability of any violent event in the month shown, from the pretrained encoder fine-tuned on 0.25 percent of Europe's training data, averaged over the 15 fine-tuned runs (three encoder seeds by five draws). This averaged forecast has a PR-AUC of 0.76 in Ukraine, against 0.64 for persistence and 0.66 for the average single run; each forecast is made at the end of the previous month. Black outlines mark cells with at least one violent event that month. White cells are not in the Ukraine test sample. National borders are from Natural Earth (internationally recognized boundaries).}
+\caption{Forecasts of Violence in Ukraine, August 2022 to January 2023. Same forecasts, shading, and outlines as Figure~\ref{fig:ukraine_invasion}.}
 \label{fig:ukraine_counter}
 \end{figure}
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_ukraine_f0025_full_3_southern_offensive.pdf}
-\caption{Forecasts of Violence in Ukraine, June to November 2023. Cells are 0.5-degree PRIO-GRID cells assigned to Ukraine. Shading is the forecast probability of any violent event in the month shown, from the pretrained encoder fine-tuned on 0.25 percent of Europe's training data, averaged over the 15 fine-tuned runs (three encoder seeds by five draws). This averaged forecast has a PR-AUC of 0.76 in Ukraine, against 0.64 for persistence and 0.66 for the average single run; each forecast is made at the end of the previous month. Black outlines mark cells with at least one violent event that month. White cells are not in the Ukraine test sample. National borders are from Natural Earth (internationally recognized boundaries).}
+\caption{Forecasts of Violence in Ukraine, June to November 2023. Same forecasts, shading, and outlines as Figure~\ref{fig:ukraine_invasion}.}
 \label{fig:ukraine_south}
 \end{figure}
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_ukraine_f0025_full_4_2024_2025.pdf}
-\caption{Forecasts of Violence in Ukraine, August 2024 to May 2025 (every second month, then April and May 2025). Cells are 0.5-degree PRIO-GRID cells assigned to Ukraine. Shading is the forecast probability of any violent event in the month shown, from the pretrained encoder fine-tuned on 0.25 percent of Europe's training data, averaged over the 15 fine-tuned runs (three encoder seeds by five draws). This averaged forecast has a PR-AUC of 0.76 in Ukraine, against 0.64 for persistence and 0.66 for the average single run; each forecast is made at the end of the previous month. Black outlines mark cells with at least one violent event that month. White cells are not in the Ukraine test sample. National borders are from Natural Earth (internationally recognized boundaries).}
+\caption{Forecasts of Violence in Ukraine, August 2024 to May 2025 (every second month, then April and May 2025). Same forecasts, shading, and outlines as Figure~\ref{fig:ukraine_invasion}.}
 \label{fig:ukraine_2024}
 \end{figure}
 \section{Transfer Within Other Domains}
@@ -541,7 +543,7 @@ To format the data, I assign each death to its municipality of occurrence and th
 
 The cells form a monthly panel from January 2000 to December 2024. I use rows from January 2001 onward, so every row has 12 months of history. For the test, I use the medium-sized encoders with the Americas held out, meaning that the encoders never saw events from the Americas, including Brazil. The training period rows run from January 2001 to December 2020, with validation data for 2021. The test covers the forecast origins from January 2022 to November 2024. 
 
-For the training shares, I use 0.25, 1, 5, 10, and 100 percent of the data with five random draws per share for all shares below 100 percent. I use the same baseline features as the conflict models rebuilt from Brazilian deaths plus the PRIO-GRID covariates. The forecaster is XGBoost with a Poisson objective function. A cell with zero deaths in the previous 12 months gets an embedding of zero, the same rule as the conflict evaluation. 
+For the training shares, I use 0.25, 1, 5, 10, and 100 percent of the data with five random draws per share for all shares below 100 percent. I use the conflict baseline features rebuilt from Brazilian deaths, plus the PRIO-GRID covariates, with three adaptations. The spatial lag uses up to eight neighboring cells rather than four, months since the last death uses month $t-1$ and is not capped, and each cell's history keeps a random sample of at most 16 deaths per month. The forecaster is XGBoost with a Poisson objective function. A cell with zero deaths in the previous 12 months gets an embedding of zero, the same rule as the conflict evaluation. 
 
 For the outcome, I use the count of deaths in month $t+1$ scored with Poisson deviance. Gains in forecasting are relative deviance reductions. For the uncertainty quantification, I use a two-way bootstrap that resamples grid cells and the 15 seed and draw pairs with 1,000 replicates and seed 123. Comparisons across outcomes use the same resampled cells and pairs, so differences between outcomes are paired. 
 
@@ -568,7 +570,7 @@ Legal intervention & Battles & Armed clash & Military Forces of & Unidentified G
  & & & \textit{state} & \textit{political militia} \\
 \hline
 \end{tabular}
-\caption*{\footnotesize \textit{Note}: One event per death. The firearm row applies only under the rich specification used in the main results. Military Police actor names are period-specific, following ACLED's own naming (2016--2018, 2019--2022, 2023--). The fatalities bin is ``1--2'' for every record. The civilian-death bin is ``1--2'' for assaults and ``0'' for legal intervention. Suicide, traffic, and drowning deaths are coded with the assault row. Vocabulary ids come from the encoder's own \texttt{vocab\_super.json}; no Brazil-specific vocabulary is introduced.}
+\caption*{\footnotesize \textit{Note}: One event per death. The firearm row applies only under the rich specification used in the main results. Military Police actor names are period-specific, following ACLED's own naming (2016--2018, 2019--2022, 2023--). The fatalities bin is ``1--2'' for every record. The civilian-death bin is ``1--2'' for assaults and ``0'' for legal intervention. Suicide, traffic, and drowning deaths are coded with the assault row. Vocabulary ids come from the encoder's own vocabulary, and no Brazil-specific vocabulary is introduced.}
 \end{table}
 
 
@@ -590,6 +592,7 @@ Random encoder vs.\ base & $-$9.6 & +1.1 & +2.4 & +2.5 & +5.9 \\
 & [$-$17.9, $-$3.7] & [$-$1.1, +2.7] & [+1.8, +3.1] & [+2.0, +3.0] & [+2.7, +11.3] \\
 \hline
 \end{tabular}
+\caption*{\footnotesize \textit{Note:} Entries are relative reductions in Poisson deviance (\%) for homicides in month $t+1$, and positive values favor the first model named. The base model is the Poisson XGBoost forecaster with the baseline features and PRIO-GRID covariates. Means over three encoder seeds (123, 456, 789) and five draws of the training share, one draw with all data. Brackets are 95\% two-way bootstrap intervals with 1,000 replicates that resample test cells and seed-draw pairs.}
 \end{table}
 
 % ADDED 2026-10-29 by Claude at Jared's request: placebo gradient figure for the Section 5 falsification evidence.
@@ -597,7 +600,7 @@ Random encoder vs.\ base & $-$9.6 & +1.1 & +2.4 & +2.5 & +5.9 \\
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_placebo_gradient.pdf}
-\caption{Placebo gradient for the Brazil cross-domain test. Each square is the relative reduction in Poisson deviance from adding the frozen conflict embedding to the gradient-boosted forecaster, measured against the same forecaster with a randomly initialized encoder of the same architecture, by outcome and by the share of Brazil's training data used to train the forecaster. Squares are means over three encoder seeds and five draws of the training share, one draw with all data, and bars are 95\% paired bootstrap intervals that resample test cells and seed-draw pairs. Filled squares mark intervals that exclude zero and hollow squares mark intervals that include zero. Homicide is the target outcome and the other three are placebos.}
+\caption{Brazil cross-domain test by outcome and training share. Each square is the relative reduction in Poisson deviance from adding the frozen conflict embedding to the gradient-boosted forecaster, measured against the same forecaster with a randomly initialized encoder of the same architecture, by outcome and by the share of Brazil's training data used to train the forecaster. Squares are means over three encoder seeds and five draws of the training share, one draw with all data, and bars are 95\% paired bootstrap intervals that resample test cells and seed-draw pairs. Filled squares mark intervals that exclude zero and hollow squares mark intervals that include zero.}
 \label{fig:placebo_gradient}
 \end{figure}
 
@@ -606,112 +609,43 @@ Against a randomly initialized encoder with the same architecture, at 0.25 perce
 
 \section{Bootstrap Intervals}
 \label{app:bootstrap}
-% MOVED from main-text footnote 2026-10-20 (Claude)
-Training the encoder with multiple seeds allows me to gauge how much the results vary across runs \citep[see][for discussion of transformers varying by random initialization]{dodge2020finetuning, mosbach2021stability, sellam2022multiberts}.
+Encoder initialization can change transformer results \citep{dodge2020finetuning, mosbach2021stability, sellam2022multiberts}, so every estimate averages over three encoder seeds and, in the limited-data comparisons, five training draws. I conduct 1,000 replicates that resample $5^\circ \times 5^\circ$ blocks of cells, which the main text reports, and single cells as a robustness check.\footnote{The intervals condition on the fitted models, encoder seeds and training draws, so they capture uncertainty from the test sample, not from retraining.}
 
-% NOTES 2026-10-21 (Claude): my draft prose removed (see Overleaf History); write this in your own words. Numbers are from the OLD encoders.
-\begin{itemize}
-\item What. Paired cluster bootstrap, 1,000 replicates, resampling $5^\circ \times 5^\circ$ blocks of cells (main) or single cells (check).
-\item Where. Table~\ref{tab:boot_main} has the three main comparisons by region. Table~\ref{tab:boot_shares} and Figure~\ref{fig:boot_share_regions} have the limited-data comparison at every share. Figure~\ref{fig:boot_persistence} has the gap over persistence.
-\item Caveat to state. Intervals condition on the fitted models, encoder seeds and training draws, so they capture uncertainty from the test sample, not from retraining.
-\end{itemize}
+Table~\ref{tab:boot_main} reports the main results by region, and its note gives the full resampling procedure; Table~\ref{tab:boot_shares} and Figure~\ref{fig:boot_share_regions} present the limited-data comparison at every share; and Figure~\ref{fig:boot_persistence} displays the gap over persistence. The fine-tuning intervals (Table~\ref{tab:finetune_grid_full}) use the same procedure, and the Brazil comparisons in Section~\ref{sec:brazil} use a two-way bootstrap that also resamples seed and draw pairs.
+
 \input{tables/tab_boot_main.tex}
 \input{tables/tab_boot_shares.tex}
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_boot_share_regions_M.png}
-\caption{Gain from the embedding by training share and held-out region. Band = 95\% spatial-block bootstrap interval; vertical lines = 95\% single-cell interval. Y-axes differ across panels.}
+\caption{Base model with the embedding minus the base model, by training share and held-out region. Band = 95\% $5^\circ$-block bootstrap interval; vertical lines = 95\% single-cell interval. Y-axes differ across panels.}
 \label{fig:boot_share_regions}
 \end{figure}
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig_boot_persistence_M.png}
-\caption{Base model with the embedding minus persistence (violence in month $t$), by held-out region (temporal test, PR-AUC). Wide bars are 95\% spatial-block intervals; thin bars are single-cell intervals.}
+\caption{Base model with the embedding minus persistence (violence in month $t$), by held-out region (temporal test, PR-AUC). Wide bars are 95\% $5^\circ$-block intervals; thin bars are single-cell intervals.}
 \label{fig:boot_persistence}
 \end{figure}
 
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % moved from the main text 2026-10-11 (civilian scope check and AR-objective table)
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): \section{Civilian Targeting Scope Check}
 
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): %\subsection{Civilian-Deaths Target (Scope Check)}
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): \label{sec:civilian}
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): The results suggest that the transformer can be used for transfer learning in conflict forecasting, with the embedding adding information in most regions even when little local data are available. Here, I test the model on a narrower outcome, whether any violence against civilians occurs in a grid cell in the following month. This outcome is useful for two reasons. First, it is more specific and rarer than the general violence outcome, because violence against civilians is a subset of the violent events used above. This tests whether the embedding remains useful when violent cell-months are scarcer. Second, reducing violence against civilians in civil wars and other forms of political violence is a central goal of early-warning systems \citep{XX}. In turn, this example offers an intuitive frame of reference for the model. 
-
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): Table \ref{tab:civilian_scope} displays the results. 
-
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): \input{tables/table4_civilian_scope.tex}
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % civilian = binarized etype_violence_against_civilians incidence, PR-AUC
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % scored (Table~\ref{tab:civilian_scope}). Report honestly: transfer advantage
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % and absolute performance both markedly weaker than general incidence, and
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % Europe/Temporal is the one cell where emb\_base actually LOSES to base
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % (-0.007). Do NOT frame as "mass atrocity" forecasting -- civilian incidence
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % is a much lower bar than mass-atrocity scale (Valentino/Straus/Early Warning
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % Project definitions -- citation still needed, see references.bib TODO).
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % Keep general political-violence framing primary; this is a boundary/scope
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % test -- consistent with what was sent to Babette Kania (USHMM) on the
-% CUT 2026-10-16 (superseded by Section~\ref{sec:civilian_case}): % framing pivot.
-\section{Forecasting Violence Against Civilians} % moved from the main text to the appendix 2026-10-16 (Jared) 
-
+\section{Forecasting Violence Against Civilians} 
 \label{sec:civilian_case}
-% Possible alternative section names: "Forecasting Violence Against Civilians" or "Application to Civilian Targeting"
-% NOTE: the appendix still holds the older "Civilian Targeting Scope Check" section (sec:civilian, table4_civilian_scope, s123 + original vocab). Delete or replace it once this section is written.
+In the main text, I analyze how a pretrained encoder can help improve forecasting in regions it was not trained on. Here, I show how a pretrained encoder can be used for a specific form of political violence, namely whether it improves forecasts of violence against civilians. 
 
-\subsection{Why Civilian Targeting}
-% - Policy priority: protection of civilians is a core mandate in peacekeeping and atrocity prevention; ties to the USHMM early-warning agenda
-% - Outcome: any violence-against-civilians event in a PRIO-GRID cell in the following month (ACLED event type)
-% - Harder target than general incidence: rarer events, and civilian targeting follows its own strategic logic (cite XXX, e.g., Kalyvas 2006; Valentino 2014)
-% - Question for this section: does the same pretrained encoder help forecast a narrower outcome it was never trained to predict?
+Civilian targeting is both a rare and an important form of political violence. In the ACLED and UCDP data, it occurs in 1.5\% of the cell-months in my panel (12\% of recorded events). Crucially, international organizations and governments treat civilian protection as a core goal in civil wars, rebellions, and interstate conflicts \citep{unsc1999res1265, hultman2013united, wiesel2019act}. These factors motivate this analysis. 
 
-% DRAFTED 2026-10-16 from the outline above
-% NOTES 2026-10-21 (Claude): my draft prose removed (see Overleaf History); write this in your own words. Numbers are from the OLD encoders.
-\begin{itemize}
-\item What. Change the outcome to any violence against civilians in a cell in the following month.
-\item Why. Protecting civilians is a core goal of peacekeeping, atrocity prevention and early warning (USHMM link). The outcome is narrower and rarer than general violence, and civilian targeting follows its own strategic logic \citep{kalyvas2006logic, valentino2014why}.
-\item Question. Does the same embedding help forecast an outcome the encoder was not built for?
-\end{itemize}
+
 
 \subsection{Design}
-% - Same 18 encoders as the main analysis (6 held-out regions x 3 seeds); no retraining for this outcome
-% - Encoder stays frozen; only the gradient-boosted head is refit on the civilian target
-% - Same LORO protocol, same temporal (train through 2020, test 2022 on) and pooled evaluations, same vocabulary remap
-% - Comparison of interest is nested: base model plus embedding vs. base model alone (Table~\ref{tab:civilian_remap})
-
-% DRAFTED 2026-10-16
-% NOTES 2026-10-21 (Claude): my draft prose removed (see Overleaf History); write this in your own words. Numbers are from the OLD encoders.
-\begin{itemize}
-\item Same 18 encoders (six regions by three seeds), not retrained. Encoder frozen; only the gradient-boosted forecaster is refit on the civilian outcome.
-\item Same protocol, evaluation periods and vocabulary remap. Comparison is nested (base plus embedding versus base).
-\end{itemize}
+This analysis uses the 18 frozen encoders from the main text (six held-out regions under the LORO protocol, three seeds each) and refits only the gradient-boosted model on the civilian outcome. For the analysis, I use the same temporal training and testing data, pooled evaluation, and vocabulary remap, which maps tokens the encoder never saw in pretraining to the unknown row. Likewise, the comparison of interest is the nested model, that is, the base model plus the pretrained frozen embeddings against a base model that does not have the embedding.   
 
 \subsection{Results}
-% - Embedding improves the base model in five of six regions in both evaluations
-% - Average gain about +0.014 (temporal) and +0.009 (pooled), similar to or slightly larger than the general incidence result
-% - Largest gains in Asia-Pacific (+0.037 temporal) and Africa (+0.019 temporal)
-% - Europe is the exception: about zero in both modes, and the full model does not beat persistence there (hypothesis: very few civilian-targeting events in the test window; counts to be checked)
-% - Translate a gain into XX more true positive cell-months and XX fewer false positives at a fixed threshold
-
-% DRAFTED 2026-10-16
-% NOTES 2026-10-21 (Claude): my draft prose removed (see Overleaf History); write this in your own words. Numbers are from the OLD encoders.
-\begin{itemize}
-\item Nested gain in five of six regions. Mean +0.016 (temporal); the pooled +0.011 goes to Section~\ref{app:pooled}. Largest in Asia-Pacific (+0.059) and Africa (+0.017).
-\item Europe is the exception. No embedding gain, and no gain over persistence.
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \item Fine-tuned versus scratch (Table~\ref{tab:finetune_civilian}). +0.046 at 0.25 percent (Europe has no runs there), then close to zero and negative from 2.5 percent.
-\end{itemize}
-% PENDING: civilian fine-tuning (step 7b) results, jobs 56448906/56448907; alert counts for the civilian outcome (cell_alerts_agg.py civilian) not yet run.
+The embedding improves forecasts in five of the six regions in both the temporal and pooled evaluations, with all three seeds positive (Table~\ref{tab:civilian_remap}). The largest gain is in Asia-Pacific in the temporal test (+0.059 PR-AUC). The other gains are small (+0.003 to +0.018). Against persistence, the model with the embedding gains +0.13 to +0.22 in these five regions. These comparisons have no bootstrap intervals, so the evidence for a gain rests on the agreement across seeds. The European gain is near zero, and there the model with the embedding barely beats persistence (+0.001). One possible explanation, which I do not test, is that Europe's training data contain few civilian events, partly because ACLED coverage of most of Europe begins only in 2018 or later, while the test period includes the 2022 Russia-Ukraine war. 
 
 \subsection{Implications for Early Warning}
-% - Atrocity early-warning systems often cover places with little historical data; the encoder adds signal there without retraining region by region
-% - The gains are modest, so the embedding complements rather than replaces hand-crafted risk models
-% - Caveat: whether the gain comes from pretraining or from the encoder architecture is tested in the random-encoder control (Appendix Section XX)
+Although the gains are relatively modest, they suggest that pretrained embeddings can improve forecasts of violence against civilians. Because this article's primary aim is to test whether transfer learning works for data other than text, images, audio, and video, rather than to maximize forecast accuracy, these gains may understate what an encoder pretrained for this outcome could achieve. Work that aims to use transfer learning for violence forecasting should pretrain or fine-tune embeddings for the outcome of interest. For early warning, the embedding is best seen as a complement to existing risk models, one that can be added without retraining region by region.
 
-% DRAFTED 2026-10-16
-% NOTES 2026-10-21 (Claude): my draft prose removed (see Overleaf History); write this in your own words. Numbers are from the OLD encoders.
-\begin{itemize}
-\item Gains are modest, so the embedding complements rather than replaces existing risk models.
-\item Why it still matters. Civilian-protection early warning often covers places with little recent data, and the encoder adds information there without retraining region by region.
-\end{itemize}
-
-% Source: outputs/eval_region_L_contrastive_e_loro_{region}_s{123,456,789}.csv, target civilian (Roar, Oct 14, 2026); all three seeds for every region.
 \begin{table}[!htbp]
 \centering
 \caption{Embedding Gain for Forecasting Violence Against Civilians}
@@ -761,10 +695,9 @@ Mean & +0.016 & & +0.011 & & +0.148 \\
 % CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \caption*{\footnotesize \textit{Note:} Outcome is any violence against civilians in a grid cell in the following month. Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds (123, 456, 789) and five draws of the training share. Both networks choose their learning rate and weight decay on 2021 validation data. Forecasts are made from January 2022 onward. The mean at 0.25 percent excludes Europe. The last row is the share of region, seed, and draw runs in which the pretrained encoder scores higher. Europe has no runs at 0.25 percent (--) because 0.25 percent of its 1,412 training-period positives is 4 cell-months, below the minimum of 5.}
 % CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \end{table}
 
-\clearpage
 \section{Where the Embedding Changes Alerts}
 \label{app:cell_alerts}
-
+In the main text, I show that the pretrained embedding raises more true alarms than the base model when both issue the same number of alerts. Compared with the base model, the model with the frozen embedding raises 710 more true alarms across the six held-out regions. Compared with persistence, it raises 4,762 more. These net totals combine gains and losses across cells. Against the base model, 1,452 cells gain and 1,293 lose, and against persistence, 2,193 cells gain and 2,110 lose. Here, I discuss where these gains are located.
 \subsection{Country-Level Alert Gains}
 \label{app:country_alerts}
 
@@ -775,28 +708,21 @@ Mean & +0.016 & & +0.011 & & +0.148 \\
 \label{fig:country_alerts}
 \end{figure}
 
-Of the 22 highest-exposure states, 19 see a net gain in true alarms, while Ukraine, Burkina Faso, and Iraq see a net loss. Across the 65 countries with at least 100 event cell-months, 44 gain and 21 lose.
+Figure \ref{fig:country_alerts} displays the result count across regions, with the $x$-axes displaying the net correct alerts per 100 event cell-months by country, that is, the true alarms gained minus false alarms added by the base plus embedding model.\footnote{The models flag the same number of cell-months.}  The point size on the figures corresponds to the total event cell-months by country. 
 
 
-The gains in forecasting are relatively small overall. Although the gains appear nominal, they are substantively meaningful. In particular, issuing the same number of alerts as the base model, the forecaster with the embedding correctly flags 710 more violent cell-months across the six regions, and therefore raises 710 fewer false alarms. The base plus embedding model's advantage over persistence is larger still. Issuing the same number of alerts as persistence, the base plus embedding model correctly flags 4,762 more violent cell-months across all regions (between 97 and 1,695 by region).\footnote{These counts rank all of a region's test cell-months together and set the number of alerts after the fact. They describe how well each model ranks cells, not a monthly alert rule an analyst could have applied in real time. Because both models issue the same number of alerts, each additional correct alert takes the place of a false alarm, so these gains do not come from issuing more alerts.} Matching the share of violent cell-months that persistence detects, it does so with 13,557 fewer false alarms across all regions (between 357 and 4,634 by region). Given that the transfer learning task is political violence, identifying 710 more violent cell-months could be consequential for both protecting human life and appropriately focusing resources in the most high-risk areas. Put differently, even if the gains are close to zero, they are consequential for the states and victims of these attacks.
 
-% NOTES 2026-10-21 (Claude): my draft prose removed (see Overleaf History); write this in your own words. Numbers are from the OLD encoders.
-% UPDATED 2026-10-29 (Claude): numbers below now from M full-source LORO (outputs/cell_alerts_{persistence,incidence}_M_fullsrc.csv.gz, seed-averaged over 123/456/789). Prior values were from the superseded encoders.
-\begin{itemize}
-\item What the map shows. For each cell, true alarms gained minus false alarms added by the base plus embedding model, with both models flagging the same number of cell-months.
-\item Against persistence. 2,193 cells gain and 2,110 lose; net +4,762 true alarms.
-\item Against the base model. Gains and losses sit side by side in the same conflict zones (1,452 cells gain, 1,293 lose); net +710.
-\item Point to Figure~\ref{fig:country_alerts} for the by-country sums (label still missing, see bullets below).
-\end{itemize}
+Of the 22 countries with the most event cell-months, 19 see a net gain in correct alerts, while Ukraine, Burkina Faso, and Iraq see a net loss. Across the 65 countries with at least 100 event cell-months, 44 gain and 21 lose. Because net correct alerts count true alarms gained minus false alarms added, a country can gain on net while raising fewer true alarms, as China and Brazil do, or lose on net while raising more true alarms, as Ukraine and Iraq do.
 
-% NOTES 2026-10-21 (Claude): my draft prose removed (see Overleaf History); write this in your own words. Numbers are from the OLD encoders.
-\begin{itemize}
-\item What. Score the same incidence-trained forecasts only on cell-months with no violence the month before (onset), and then only where neighbouring cells were also quiet.
-\item Why. These are the cases where persistence cannot help, so they test whether the embedding adds information about new violence.
-\item Numbers. Onset +0.017, positive in 18 of 18 runs. Quiet neighbours +0.009, 13 of 18. Best F1 +0.010, 18 of 18.
-\end{itemize}
 
-% Source: outputs/eval_region_L_contrastive_e_loro_{region}_s{seed}.csv, mode B_temporal, targets onset, noncontig_onset, rare_event_f1 (transfer_eval_region.py lines 214-227); means over seeds 123/456/789. Read 2026-10-17.
+The gains are small on the PR-AUC scale but substantively meaningful. The advantage over persistence ranges from 97 to 1,695 additional correct alerts by region.\footnote{These counts rank all of a region's test cell-months together and set the number of alerts after the fact. They describe how well each model ranks cells, not a monthly alert rule an analyst could have applied in real time. Because both models issue the same number of alerts, each additional correct alert takes the place of a false alarm, so these gains do not come from issuing more alerts.} Matching the share of violent cell-months that persistence detects, it does so with 13,557 fewer false alarms across all regions (between 357 and 4,634 by region). Because the task is forecasting political violence, even gains of this size could matter for protecting civilians and for directing resources to the highest-risk areas.
+
+\subsection{Onsets and Quiet Neighbors}
+\label{app:onset}
+In the main text, I compare model performance by examining PR-AUC and the number of true alarms across the held-out regions. Here, I assess whether the pretrained embedding improves performance on ``unexpected'' cells. I refit both forecasters on two subsets of the temporal training and test data. The first contains onset cell-months, that is, cell-months with no violence in month $t-1$. The second further restricts these to cells whose neighbors were also quiet in month $t-1$. Lagged persistence predicts no violence anywhere in these subsets, so its PR-AUC equals the share of these cell-months that turn violent.
+
+Table~\ref{tab:onset_subsets} displays the results. For onsets, the model with the pretrained embedding improves PR-AUC by 0.017 on average, and the gain is positive in all 18 runs (six regions by three seeds). Where neighboring cells were also quiet, the average gain falls to 0.009 and is positive in 13 of 18 runs, with South Asia negative and Europe close to zero. Across all test cell-months, the model with the embedding also has a higher best F1 score in all 18 runs, with an average gain of 0.010. These comparisons have no bootstrap intervals, so the evidence rests on the agreement across runs.
+
 \begin{table}[!htbp]
 \centering
 \caption{Embedding Gain on Onsets and Rare Events (Temporal Test)}
@@ -805,7 +731,7 @@ The gains in forecasting are relatively small overall. Although the gains appear
 % UPDATED 2026-11-08 from figures_tables/tables_v5_20261108/tab_onset_subsets.tex (make_tables.py; eval_region_M_contrastive_e_fullsrc_loro_{region}_s{seed}.csv, B_temporal)
 \begin{tabular}{lccccccccc}
 \hline
-& \multicolumn{3}{c}{Onset} & \multicolumn{3}{c}{Onset, quiet neighbours} & \multicolumn{2}{c}{Best F1} \\
+& \multicolumn{3}{c}{Onset} & \multicolumn{3}{c}{Onset, quiet neighbors} & \multicolumn{2}{c}{Best F1} \\
 Region & Share & Base & Gain & Share & Base & Gain & Base & Gain \\
 \hline
 Africa & 0.067 & 0.360 & +0.014 & 0.035 & 0.187 & +0.015 & 0.615 & +0.007 \\
@@ -819,43 +745,38 @@ Mean & 0.041 & 0.304 & +0.017 & 0.022 & 0.153 & +0.009 & 0.636 & +0.010 \\
 Runs $>0$ & & & 18/18 & & & 13/18 & & 18/18 \\
 \hline
 \end{tabular}
-\caption*{\footnotesize \textit{Note:} Onset columns score the incidence forecasts only on cell-months with no violent event in the month before the forecast month. Quiet-neighbour columns further require no violence in the cell's spatial lag in that month. Share is the share of those cell-months with violence the next month, which is also the PR-AUC of the lagged persistence forecast there. Base is the PR-AUC of the base model, and Gain is base plus embedding minus base. Best F1 is the highest F1 over thresholds on all test cell-months. Values are means over three encoder seeds.}
+\caption*{\footnotesize \textit{Note:} Onset columns refit both forecasters on cell-months with no violent event in month $t-1$. Quiet-neighbor columns further require no violence in the cell's spatial lag in that month. Share is the share of those cell-months with violence the next month, which is also the PR-AUC of the lagged persistence forecast there. Base is the PR-AUC of the base model, and Gain is base plus embedding minus base. Best F1 is the highest F1 over thresholds on all test cell-months. Values are means over three encoder seeds.}
 \end{table}
 
-% ADDED 2026-10-20 by Claude: items to resolve in this section
-\begin{itemize}
-\item Figure~\ref{fig:country_alerts} is referenced above but no figure carries that label. Include figures/fig\_cell\_alerts\_countries\_final.png (or the 2row version) with \texttt{\textbackslash label\{fig:country\_alerts\}}.
-\item Onset, quiet-neighbour, and best-F1 definitions appear only here. The main-text Discussion uses ``violence onset'' without a definition.
-\end{itemize}
 
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \section{Autoregressive Pretraining Objective}
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \label{app:ar}
-
-
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \input{tables/table5_ar_baseline.tex}
-% ADDED 2026-10-20 by Claude: items to resolve
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \begin{itemize}
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \item Discussion says the AR encoder is evaluated on 26 held-out countries in the pooled evaluation. The table does not mention the 26 countries or the pooled setup, and its source comment says 151 units. Reconcile and state both.
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \item Add the temporal setup alongside the pooled one (both setups, per plan).
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \item Define feature sets a, b, c, e, f in a table note; the tablenotes are commented out.
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \item List the 26 countries in Section~\ref{app:holdout_countries}.
-% CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \end{itemize}
-% Autoregressive-objective encoder: emb\_base advantage holds (15/15 positive,
-% smaller magnitude, Table~\ref{tab:ar_baseline}) -- state as "not an artifact
-% of the contrastive objective."
-%
-% STATUS AS OF 2026-09-29 (pulled directly from Roar this session):
-%   AR-objective robustness check  — DONE, see Table~\ref{tab:ar_baseline}
-%   Gradient-boosted base arm      — DONE, this IS the "base" arm throughout
-%   Geography ablation             — NOT FOUND in outputs/ as of today; needs a run
-%   Seeds 4-5                      — NOT FOUND (only s123/s456/s789 present); needs a run
-%   Unseen-unit representation clarification — write up the resolution
-
-
-% ===== APPENDIX SKELETONS added 2026-10-17 (Claude, at Jared's request). Headings/labels only; text and tables to be written by Jared. =====
 \section{Event Fields}
 \label{app:fields}
-% TODO (Jared): one entry per field used by the encoder (event type, sub-event type, actor 1, actor 2, actor 1 type, actor 2 type, month offset); source: data_intermediate/vocab_super.json (vocabulary sizes) and ACLED codebook definitions.
+For each cell-month $t$, the encoder reads the events in that cell from month $t-12$ to month $t-1$. The events are sorted by month and truncated at the 200 most recent events. Each event is one token with the seven fields in Table~\ref{tab:event_fields}. Each field has its own learned 128-dimensional embedding. The seven embeddings are concatenated and projected back to 128 dimensions before the transformer layers.
+
+When a value is not in a field's vocabulary, it is mapped to an ``unknown'' token. In the LORO runs, values the encoder never saw in pretraining, such as actors active only in the held-out region or only after 2020, are also mapped to the unknown token. The remap matters in practice. Among test-period cell-months with at least one event in their input window, the share containing at least one actor the encoder never saw in pretraining ranges from 35\% in the Middle East and North Africa to 82\% in Africa (50\% in South Asia, 70\% in Asia-Pacific, 72\% in Europe, and 76\% in the Americas). The other fields are never unseen, because every event type, sub-event type, and actor type appears in each region's pretraining data. The unknown actor token is itself trained during pretraining, since every actor outside the 500 most frequent maps to it, so an unseen actor receives the learned representation of a rare actor rather than an untrained one.
+
+The actor vocabulary keeps the 500 most frequent actors, counted over all regions and years, including the held-out region. Because the vocabulary is built this way, the remap is what keeps actors seen only in the held-out region from entering the encoder. UCDP events are mapped into the ACLED fields as shown in the last column of Table~\ref{tab:event_fields}. ACLED actor types come from ACLED's interaction codes, and UCDP actor types are inferred from the actor name and type of violence. The pipeline also builds binned fatalities and civilian-death fields, but the main specification does not use them.
+
+\begin{table}[!htbp]
+\centering
+\caption{Event Fields Read by the Encoder}
+\label{tab:event_fields}
+\small
+\begin{tabular}{p{2.2cm}p{5.6cm}cp{4.2cm}}
+\hline
+Field & Values & Vocabulary & UCDP mapping \\
+\hline
+Event type & Battles; explosions/remote violence; violence against civilians; protests; riots; strategic developments & 6 & State-based and non-state $\rightarrow$ battles; one-sided $\rightarrow$ violence against civilians \\
+Sub-event type & ACLED sub-event types (e.g., armed clash, attack, air/drone strike, peaceful protest) & 25 & State-based and non-state $\rightarrow$ armed clash; one-sided $\rightarrow$ attack \\
+Actor 1 & The 500 most frequent named actors & 500 & Side A \\
+Actor 2 & The 500 most frequent named actors & 500 & Side B; one-sided events $\rightarrow$ civilians \\
+Actor 1 type & No actor; state; rebel; political militia; identity militia; rioters; protesters; civilians; external/other & 9 & Inferred from actor name and type of violence \\
+Actor 2 type & Same nine categories & 9 & Same \\
+Month offset & Months before the unit's month (1--12) & 12 & Same as ACLED \\
+\hline
+\end{tabular}
+\caption*{\footnotesize \textit{Note:} Vocabulary counts exclude the padding and unknown tokens. Actor counts are taken over all regions and years.}
+\end{table}
 
 % CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \section{Models Without Static Covariates}
 % CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \label{app:nostatic}
@@ -882,51 +803,69 @@ Runs $>0$ & & & 18/18 & & & 13/18 & & 18/18 \\
 
 \section{Forecasting Ensemble With a Four-Head Encoder}
 \label{app:forecast_ensemble}
-\label{app:ensemble} % ADDED 2026-10-20 by Claude: the Discussion cites app:ensemble
-% ADDED 2026-10-20 by Claude: claims in the Discussion this section must support
-% BULLET NOTES 2026-11-09 by Claude (rerun on the full-source all-region L encoders, seeds 123/456/789), for Jared to write prose from.
-% Source: outputs/ens_fullsrc/scores_mt_{target}_pilot_s123-456-789.csv, boot_mt_pilot_s123-456-789.csv (5x5-degree block bootstrap, B 1000), alerts_mt_pilot_s123-456-789.csv. Committed cebea5e.
-\begin{itemize}
-\item What. A forecasting exercise outside the transfer design. Three all-region encoders (L, full source, seeds 123, 456, 789) are each fine-tuned once with four heads (any violence, violence against civilians, onset in quiet cells, 25 or more deaths). Training 1990--2020, early stopping January to June 2021, the stacking combiner fit on July to December 2021, test January 2022 on (922,360 cell-months). Comparisons are persistence and XGBoost on the same sample. Disclose that the encoder design was chosen on 2022+ months.
-\item Civilian victimization. The averaged forecast reaches PR-AUC 0.581 against 0.524 for XGBoost, a gain of +0.056 [+0.045, +0.069], positive with an interval above zero in all six regions (from +0.029 in Africa to +0.142 in South Asia). Matching XGBoost's number of alerts, it flags 28,095 violent cell-months against 26,103 (+1,992).
-\item Onset. 0.335 against 0.315, +0.020 [+0.015, +0.025], above zero in five of six regions (South Asia +0.010 [$-$0.003, +0.023]); 13,133 against 12,424 correct alerts (+709). Persistence is uninformative here by construction (0.041).
-\item Any violence. Effectively a tie with XGBoost, +0.001 [$-$0.004, +0.006] (0.696 against 0.695), and far above persistence (+0.323 [+0.312, +0.332]).
-\item Fatal violence (25 or more deaths). Above XGBoost, +0.085 [+0.031, +0.145] (0.375 against 0.290), but not above persistence ($-$0.043 [$-$0.118, +0.042]; persistence 0.418). Treat as descriptive.
-\item Ensembling. Averaging the three encoders adds little over the best single encoder (any violence 0.696 against 0.697, civilian 0.581 against 0.577, onset 0.335 against 0.332, fatal 0.375 against 0.361) because their forecasts are highly correlated (rank correlation 0.85 to 0.91). The stacked combiner is no better than the mean.
-\item Versus the earlier run on the old encoders (October 17). The pattern is unchanged; civilian +0.056 both times, onset +0.022 to +0.020, any violence +0.002 to +0.001, fatal over XGBoost +0.108 to +0.085.
-\end{itemize}
-% TODO (Jared): forecasting with the pretrained encoding (not the LORO transfer design). Five all-region encoders (seeds 123, 456, 789, 101112, 131415) fine-tuned once each with four heads (incidence, civilian, onset, fatal25); train 1990-2020, stop 2021-01..06, stack 2021-07..12, test 2022-01 on; combiners ens_mean and ens_stack vs persistence and XGBoost. Results: outputs/ens/scores_mt_{target}.csv (jobs 56515866-71, running 2026-10-17). Disclose that encoder design was chosen on 2022+ months.
+\label{app:ensemble}
+In the main text, I demonstrate that a pretrained geospatial conflict embedding can be used for transfer learning. Here, I ask a separate question, namely whether pretrained encoders improve forecasts when every region is available for pretraining. Because pretraining uses no outcome labels, the test is whether an encoder fine-tuned on several outcomes at once forecasts future violence better than XGBoost and persistence.
 
+For this exercise, I use three large all-region encoders. These models differ from the ones presented in the main text in four ways: (a) there is no LORO protocol, so every region is in pretraining; (b) the transformers are larger, with an embedding dimension of 256, six layers, and eight attention heads, compared with 128, four, and eight for the encoders in the main text; (c) all encoder parameters are fine-tuned jointly with four output heads, rather than frozen and added to XGBoost; and (d) the forecasts of the three encoders are averaged. I use the larger encoders because an all-region version of the main-text encoder was not trained, and because this exercise concerns forecasting rather than the transfer argument, I did not retrain one. As noted in Appendix Section~\ref{app:encoder_details}, the encoder design was chosen using the post-2021 test months.
 
+Each encoder is fine-tuned once, with a shared encoder and four linear heads trained jointly, one each for (a) any violence, (b) violence against civilians, (c) onset in cells with no violence in the current month, and (d) 25 or more deaths, all in the following month. The heads are trained on forecast months from 1990 to 2020, early stopping uses January to June 2021, a stacking combiner is fit on July to December 2021, and the test period runs from January 2022 onward. The pretraining data end in December 2020. The ensemble forecast is compared with a persistence model and with an XGBoost model that uses the baseline features and PRIO-GRID covariates but no embedding, trained on the same sample. 
 
-\section{Pooled (Interpolation) Evaluation}
-\label{app:pooled}
-% ADDED 2026-10-20 by Claude: all pooled results live here; the main text reports only the temporal design (train through 2020, early stopping on 2021, forecasts from January 2022).
-\begin{itemize}
-\item Define the pooled design. Five-fold cross-validation with cell-months assigned to folds at random, so it measures interpolation rather than forecasting or transfer over time.
-\item Pooled version of Figure~\ref{fig:loro_gains} (persistence, base, base plus embedding by held-out region). The Mode A pooled rows are in the same source CSVs as the temporal rows.
-\item Pretrained versus random encoder, pooled (Table~\ref{tab:random_pooled}). The gap is +0.001 (positive in 15 of 18 runs). State plainly that the pretraining advantage appears in the temporal test, not in the pooled one.
+Table~\ref{tab:ensemble} reports the results. Compared with XGBoost, the ensemble improves forecasts of violence against civilians (+0.056), onset (+0.020), and 25 or more deaths (+0.085). For any violence, the two are effectively tied (+0.001). The ensemble outperforms persistence for any violence, violence against civilians, and onset. For 25 or more deaths, persistence scores higher than the ensemble (0.418 against 0.375), but the interval for the difference includes zero. 
+
+\begin{table}[!htbp]
+\centering
+\caption{Forecasting Ensemble Results, January 2022 Onward}
+\label{tab:ensemble}
+\small
+\resizebox{\textwidth}{!}{\begin{tabular}{lrccccc}
+\hline
+ & Positive & \multicolumn{3}{c}{PR-AUC} & \multicolumn{2}{c}{Ensemble minus} \\
+Outcome & cell-months & Persistence & XGBoost & Ensemble & XGBoost & Persistence \\
+\hline
+Any violence & 81,665 & 0.373 & 0.695 & 0.696 & +0.001 & +0.323 \\
+ & & & & & [$-$0.004, +0.006] & [+0.312, +0.332] \\[2pt]
+Violence against civilians & 51,073 & 0.363 & 0.524 & 0.581 & +0.056 & +0.218 \\
+ & & & & & [+0.045, +0.069] & [+0.210, +0.225] \\[2pt]
+Onset & 34,045 & 0.041 & 0.315 & 0.335 & +0.020 & +0.295 \\
+ & & & & & [+0.015, +0.025] & [+0.274, +0.313] \\[2pt]
+25 or more deaths & 6,271 & 0.418 & 0.290 & 0.375 & +0.085 & $-$0.043 \\
+ & & & & & [+0.031, +0.145] & [$-$0.118, +0.042] \\
+\hline
+\end{tabular}}
+\caption*{\footnotesize \textit{Note:} Test period January 2022 onward, 922,360 cell-months (839,793 for onset, which is defined only on cell-months with no violence in the current month). Ensemble is the mean forecast of three all-region encoders (seeds 123, 456, 789), each fine-tuned once with four heads. XGBoost uses the baseline features and PRIO-GRID covariates without the embedding. Persistence is violence in month $t$ for any violence and onset, the month-$t$ count of violence against civilians for the civilian outcome, and month-$t$ fatalities for 25 or more deaths. Brackets are 95\% intervals from 1,000 bootstrap replicates resampling $5^\circ \times 5^\circ$ blocks of cells; they hold the fitted models fixed.}
+\end{table}
+
+% CUT 2026-11-17 (Jared, folded into app:random): \section{Pooled (Interpolation) Evaluation}
+% CUT 2026-11-17 (Jared, folded into app:random): \label{app:pooled}
+% CUT 2026-11-17 (Jared, folded into app:random): In the main text, I report the model fit using temporal results. Here, I present the pooled outcomes---or the five-fold cross-validation where cell-months are assigned to folds at random. This evaluation metric measures interpolation---or XXXXXXXX---rather than forecasting or transfer over time.
+
+% CUT 2026-11-17 (Jared, folded into app:random): Table~\ref{tab:random_pooled} presents the results. In 15 out of 18 runs, the gap is positive, suggesting that the pretraining advantage is most pronounced in the temporal evaluation. 
+% CUT 2026-11-17 (Jared, folded into app:random): \begin{itemize}
+% CUT 2026-11-17 (Jared, folded into app:random): \item Define the pooled design. Five-fold cross-validation with cell-months assigned to folds at random, so it measures interpolation rather than forecasting or transfer over time.
+% CUT 2026-11-17 (Jared, folded into app:random): \item Pooled version of Figure~\ref{fig:loro_gains} (persistence, base, base plus embedding by held-out region). The Mode A pooled rows are in the same source CSVs as the temporal rows.
+% CUT 2026-11-17 (Jared, folded into app:random): \item Pretrained versus random encoder, pooled (Table~\ref{tab:random_pooled}). The gap is +0.001 (positive in 15 of 18 runs). State plainly that the pretraining advantage appears in the temporal test, not in the pooled one.
 % CUT 2026-11-08 (needs a multi-day GPU rerun; Jared): \item Autoregressive objective (Section~\ref{app:ar}). The 15 feature-set and seed combinations cited in the Discussion are pooled results on the 26 held-out countries; add the temporal counterpart.
-\item Civilian outcome pooled column (Table~\ref{tab:civilian_remap}).
-\end{itemize}
+% CUT 2026-11-17 (Jared, folded into app:random): \item Civilian outcome pooled column (Table~\ref{tab:civilian_remap}).
+% CUT 2026-11-17 (Jared, folded into app:random): \end{itemize}
 
-\section{Smaller and Medium Encoders}
+\section{Smaller and Large Encoders}
 \label{app:sizes}
-% MOVED from main-text footnote 2026-10-20 (Claude)
-I replicate the main results using two other transformers that use the same (a) input data, (b) training, validation, and testing sets, and (c) contrastive pretraining objective and early stopping rule. The models differ in embedding width, number of layers, number of attention heads, and learning rate. The first model is a smaller encoder with a 64-dimensional embedding, 2 layers, 4 attention heads, and a learning rate of $10^{-3}$. The second model is a medium encoder with a 128-dimensional embedding, 4 layers, 8 attention heads, and a learning rate of $5 \times 10^{-4}$.
+I replicate the main results using two other transformers that use the same (a) input data, (b) training, validation, and testing sets, and (c) contrastive pretraining objective and early stopping rule. The models differ in embedding width, number of layers, number of attention heads, and learning rate. The first model is a smaller encoder with a 64-dimensional embedding, two layers, four attention heads, and a learning rate of $10^{-3}$. The second model is a larger encoder with a 256-dimensional embedding, six layers, eight attention heads, and a learning rate of $3 \times 10^{-4}$. The main-text encoder has a 128-dimensional embedding, four layers, eight attention heads, and a learning rate of $5 \times 10^{-4}$.
 
-% ADDED 2026-10-20 by Claude
-\begin{itemize}
-\item Promised in the Protocols footnote (formerly ``Appendix Section XX'').
-\item Repeat Figure~\ref{fig:loro_gains} and the fine-tuning comparison with the small ($d=64$, 2 layers, 4 heads, learning rate $10^{-3}$) and medium ($d=128$, 4 layers, 8 heads, $5\times10^{-4}$) encoders, 18 LORO encoders each.
-\item State the decision rule for not training the extra-large encoder.
-\item Fixed 30-epoch cap (patience 15 often did not trigger) \citep{prechelt1998early, goodfellow2016deep}.
-\end{itemize}
+Figure~\ref{fig:sizes} displays the main results with these encoders. In both, the model with the embedding outperforms persistence and the base model in every held-out region (the interval for the gain over the base model in Europe includes zero), and fine-tuning the pretrained encoder outperforms training from scratch at the smallest shares of local data. As in the main text, the fine-tuning advantage is largest at 0.25 percent and fades by about 1 to 2.5 percent.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_sizes_S_L.png}
+\caption{Main results for the small (top) and large (bottom) encoders. Columns A and B show the base model with the embedding minus persistence and minus the base model, by held-out region (temporal test). Column C shows the fine-tuned pretrained encoder minus the same network trained from scratch, by share of the held-out region's training data (all parameters tuned, equal-weight mean of the six regions). Points are means over three encoder seeds (and five draws of the training share in column C); bars are 95\% intervals from the $5^\circ \times 5^\circ$ block bootstrap. Within a column, both rows share the same vertical scale.}
+\label{fig:sizes}
+\end{figure}
+
 
 % ADDED 2026-10-28 by Claude: encoder-size ladder skeleton (S/M/L). Frozen-embedding numbers from outputs/bootstrap_ci_{S,M,L}_fullsrc_block5.csv and the matching _rand.csv files.
 \subsection{Frozen Embedding Results by Encoder Size}
 \label{app:sizes_frozen}
-Table~\ref{tab:sizes_frozen} reports the frozen-embedding step of the ladder for the small, medium and large encoders.
+Table~\ref{tab:sizes_frozen} reports the frozen-embedding comparisons for the small, medium, and large encoders. At every size, the model with the embedding improves on the base model (+0.009 for the small encoder, +0.013 for the medium, and +0.012 for the large), and the pretrained encoder improves on a random encoder of the same size (+0.006, +0.005, and +0.006). Every interval excludes zero.
 
 \begin{table}[!htbp]
 \centering\footnotesize
@@ -945,14 +884,14 @@ Pretrained $-$ random encoder & $+0.0057$ & $+0.0045$ & $+0.0061$ \\
 \hline
 \end{tabular}
 \begin{minipage}{0.98\textwidth}\footnotesize\vspace{0.5ex}
-Notes. Equal-weight mean of the six held-out regions, averaged over three encoder seeds (123, 456, 789). Brackets are 95\% intervals from 1,000 paired bootstrap replicates resampling $5^\circ \times 5^\circ$ blocks of grid cells. M is the main-text encoder; for M the gain over persistence is positive in all six regions and the gain over the base model is positive in 18 of 18 region-seed runs. Built from outputs/bootstrap\_ci\_\{S,M,L\}\_fullsrc\_block5.csv and the matching \_rand.csv files.
+Notes. Equal-weight mean of the six held-out regions, averaged over three encoder seeds (123, 456, 789). Brackets are 95\% intervals from 1,000 paired bootstrap replicates resampling $5^\circ \times 5^\circ$ blocks of grid cells. M is the main-text encoder; for M the gain over persistence is positive in all six regions and the gain over the base model is positive in 18 of 18 region-seed runs.
 \end{minipage}
 \end{table}
 
 \subsection{Fine-Tuning by Encoder Size}
 \label{app:sizes_finetune}
 % FILLED 2026-10-29 by Claude from outputs/bootstrap_ft_fullsrc_{S,M,L}_top2_block5.csv (ALL rows, equal-weight mean of the six held-out regions).
-Table~\ref{tab:sizes_finetune_full} reports the fine-tuning step of the ladder for the three encoder sizes, with all parameters tuned, and Table~\ref{tab:sizes_finetune} repeats it with only the top two layers tuned.
+Table~\ref{tab:sizes_finetune_full} reports the fine-tuning step of the ladder for the three encoder sizes, with all parameters tuned, and Table~\ref{tab:sizes_finetune} repeats it with only the top two layers tuned. With all parameters tuned, the pretrained encoder beats the network trained from scratch at 0.25, 0.5, and 0.75 percent at every size, with gains of +0.053 to +0.062 at 0.25 percent. From 2.5 percent on, the differences are small and their sign varies by size. With only the top two layers tuned, the gain at 0.25 percent stays positive at every size but shrinks as the encoder grows (+0.051, +0.037, and +0.024), and from 2.5 percent on the pretrained encoder trails the network trained from scratch at the medium and large sizes.
 
 % ADDED 2026-10-31 by Claude from outputs/bootstrap_ft_fullsrc_{S,M,L}_full_block5.csv (ALL rows, equal-weight mean of the six held-out regions, B 1000).
 \begin{table}[!htbp]
@@ -995,22 +934,14 @@ Large (L) & $+0.024$ & $-0.002$ & $-0.002$ & $-0.011$ & $-0.030$ & $-0.037$ & $-
 \hline
 \end{tabular}}
 \begin{minipage}{0.98\textwidth}\footnotesize\vspace{0.5ex}
-Notes. Equal-weight mean of the six held-out regions, averaged over three encoder seeds and five draws of the training share. Brackets are 95\% intervals from 1,000 paired bootstrap replicates resampling $5^\circ \times 5^\circ$ blocks of grid cells. Only the top two transformer layers and the output layer are tuned.
+Notes. Equal-weight mean of the six held-out regions, averaged over three encoder seeds and five draws of the training share. Brackets are 95\% intervals from 1,000 paired bootstrap replicates resampling $5^\circ \times 5^\circ$ blocks of grid cells. Only the top two transformer layers, the final layer normalization, and the output layer are tuned.
 \end{minipage}
 \end{table}
-
-% BULLET NOTES 2026-10-29 by Claude, for Jared to write prose from. Delete this block once the prose is written.
-\begin{itemize}
-\item What. The fine-tuning rung of the ladder for all three sizes, all parameters tuned, against the same architecture trained from scratch (Table~\ref{tab:sizes_finetune_full}). Table~\ref{tab:sizes_finetune} reports the top-two-layer arm.
-\item Common pattern. Every size is positive with an interval that excludes zero at 0.25, 0.5 and 0.75 percent. At 0.25 percent the gains are S +0.062, M +0.053 and L +0.056, with overlapping intervals.
-\item At 1 percent. M (+0.014) and L (+0.008) exclude zero, and S (+0.005 [$-$0.000, +0.013]) does not.
-\item With more data. M is negative from 2.5 percent on ($-$0.007, $-$0.018, $-$0.010), each interval excluding zero. S and L stay near zero, and both are positive at 5 percent (S +0.007 [+0.004, +0.013], L +0.005 [+0.000, +0.010]). The decline at larger shares is clearest for M.
-\end{itemize}
 
 \subsection{Brazil Cross-Domain Transfer by Encoder Size}
 \label{app:sizes_brazil}
 % FILLED 2026-10-29 by Claude. S from outputs/crossdomain/xd_s_boot.csv (rungs C0_S and C1_S); M and L from outputs/crossdomain/xd_m_boot.csv (rungs C0_M, C1_M, C0_L and C1_L). All rows status complete, so no size is missing.
-Table~\ref{tab:sizes_brazil} repeats the Brazil homicide comparisons of Section~\ref{sec:brazil} for the three encoder sizes.
+Table~\ref{tab:sizes_brazil} repeats the Brazil homicide comparisons of Section~\ref{sec:brazil} for the three encoder sizes. At every size, the pretrained embedding reduces Poisson deviance relative to the random encoder at 0.25 percent, 1 percent, and with all data, and relative to the base model at 1 percent, and every interval excludes zero. The gain over the random encoder at 0.25 percent grows with encoder size, from 7.6 percent for the small encoder to 16.5 percent for the large encoder, while with all data it falls from 4.1 to 1.9 percent. In the fine-tuning comparison, the pretrained encoder reduces deviance at all three sizes, but the interval excludes zero only for the large encoder.
 
 \begin{table}[!htbp]
 \centering\footnotesize
@@ -1029,90 +960,118 @@ Pretrained vs.\ random encoder, all data & $+4.1$ & $+2.8$ & $+1.9$ \\
 Pretrained vs.\ base, 1\% & $+6.4$ & $+6.8$ & $+6.6$ \\
 & [$+5.2$, $+7.4$] & [$+5.8$, $+7.8$] & [$+5.3$, $+7.6$] \\
 \hline
-Pre-registered fine-tuning test, 1\% & $+5.4$ & $+3.6$ & $+5.7$ \\
+Fine-tuned vs.\ scratch, top two layers, 1\% & $+5.4$ & $+3.6$ & $+5.7$ \\
 & [$-1.6$, $+11.3$] & [$-0.4$, $+7.0$] & [$+0.2$, $+11.3$] \\
 \hline
 \end{tabular}
 \begin{minipage}{0.92\textwidth}\footnotesize\vspace{0.5ex}
-Notes. Positive values favor the first model named. Means over three encoder seeds (123, 456, 789) and five draws of the training share, one draw with all data. The frozen-embedding rows above the line carry 95\% paired bootstrap intervals that resample test cells and seed-draw pairs, as in Table~\ref{tab:brazil}. The pre-registered fine-tuning test compares the encoder with its top two layers and output layer tuned against the same network trained from scratch, and carries the cell bootstrap interval used for the pre-registered rule in Section~\ref{sec:brazil}. Each encoder is the size-matched encoder pretrained without the Americas.
+Notes. Positive values favor the first model named. Means over three encoder seeds (123, 456, 789) and five draws of the training share, one draw with all data. The frozen-embedding rows above the line carry 95\% paired bootstrap intervals that resample test cells and seed-draw pairs, as in Table~\ref{tab:brazil}. The fine-tuning row compares the encoder with its top two layers and output layer tuned against the same network trained from scratch, with a 95\% bootstrap interval that resamples test cells only. Each encoder is the size-matched encoder pretrained without the Americas.
 \end{minipage}
 \end{table}
 
-% BULLET NOTES 2026-10-29 by Claude, for Jared to write prose from. Delete this block once the prose is written.
-\begin{itemize}
-\item What. The Brazil cross-domain test repeated at all three sizes. Every cell is a completed run, nothing is pending.
-\item Scarce data favor the big encoder. Against the random encoder at 0.25 percent the gap widens with size, S $+7.6$, M $+11.1$, L $+16.5$, and every interval excludes zero.
-\item With all the data the ordering flips, S $+4.1$, M $+2.8$, L $+1.9$. The advantage of pretraining shrinks as local data grow, fastest for the largest encoder.
-\item Against the base model at 1 percent the three sizes are indistinguishable, $+6.4$, $+6.8$ and $+6.6$.
-\item Pre-registered comparison (top two layers tuned versus scratch, 1 percent). S +5.4 percent [$-$1.6, +11.3], M +3.6 [$-$0.4, +7.0], L +5.7 [+0.2, +11.3]. Point estimates are similar across sizes, and the intervals overlap. Appendix Section~\ref{app:brazil_prereg} reports this comparison on its own.
-\item Note for the size discussion. In Brazil the gain over the random encoder at 0.25 percent is largest for L (+16.5 vs +11.1 for M), though the intervals overlap.
-\end{itemize}
-
-\subsection{Pre-Registered Fine-Tuning Test for Brazil}
-\label{app:brazil_prereg}
-% MOVED 2026-10-29 by Claude from Section~\ref{sec:brazil} at Jared's request. Effect and intervals from outputs/crossdomain/xd_m_boot.csv (rungs C0_M and C0_L) and xd_s_boot.csv (rung C0_S), comparison scratch versus top2, cell bootstrap.
-Before running the cross-domain test I registered a single comparison, the encoder fine-tuned on 1 percent of Brazil's data with its top two layers and output layer tuned, against the same network trained from scratch, with a 2 percent threshold set in advance.
-
-\begin{itemize}
-\item Effect. With the M encoder the fine-tuned model reduces Poisson deviance by 3.6 percent relative to the scratch network, cell-bootstrap interval [$-$0.4, +7.0].
-\item Other sizes. S gives +5.4\% [$-$1.6, +11.3] and L gives +5.7\% [+0.2, +11.3] on the same comparison (Table~\ref{tab:sizes_brazil}).
-\item Precision. With three encoder seeds and five draws of the training share, the interval spans about 7 percentage points, wider than the 2 percent threshold, so the comparison cannot distinguish an effect of that size from zero.
-\item Architecture note. For M the top two layers are half the network, two of four, so the tuned and frozen arms are less distinct than the label suggests.
-\end{itemize}
 
 \section{Fine-Tuning Details}
 \label{app:ft_details}
-% ADDED 2026-10-20 by Claude
+Both networks in the fine-tuning comparison, the pretrained encoder and the same architecture trained from scratch, are trained with the same procedure.
 \begin{itemize}
-\item The main text says both networks search ``the same grid of learning rates and weight decays'' without listing it. Give the grid (learning rates $3\times10^{-5}$, $10^{-4}$, $3\times10^{-4}$, $10^{-3}$; weight decay 0 or 0.01), maximum epochs (50), patience (5), the linear output layer on the summary token, and the class-weighted loss.
-\item State the 2021 validation draw at the same share and the minimum number of positives. The civilian table note says a minimum of 5; the code floor is 10 validation positives. Reconcile.
-\item State how the five stratified draws are seeded.
+\item \textit{Output layer and loss.} A linear output layer on the summary token produces the forecast. The loss is binary cross-entropy with the positive class weighted by the ratio of negative to positive cell-months in the training draw.
+\item \textit{Optimizer and search grid.} Both networks use AdamW with gradient norms clipped at 1. Each searches the same grid of learning rates ($3\times10^{-5}$, $10^{-4}$, $3\times10^{-4}$, $10^{-3}$) and weight decays (0 and 0.01). The setting with the highest validation PR-AUC on the first draw of each share is reused for the other four draws. If the reused setting diverges on a later draw, the full grid is searched for that draw.
+\item \textit{Stopping.} Training runs for at most 50 epochs and stops when validation PR-AUC has not improved for five epochs. The weights from the best validation epoch are used to score the test period.
+\item \textit{Validation data.} Validation rows are a stratified draw of the held-out region's 2021 cell-months at the same share as the training draw, with at least 10 violent cell-months. A training draw needs at least five violent cell-months.
+\item \textit{Draws and seeds.} Each share has five stratified random draws of the held-out region's 1990--2020 rows. A draw depends only on the region, the share, and the draw number, with base seed 123, so both networks and all three encoder seeds see the same rows.
+\item \textit{Arms.} In the main arm, all parameters of the encoder and the output layer are tuned. In the second arm, only the top two transformer layers, the final layer normalization, and the output layer of the pretrained encoder are tuned, while the network trained from scratch always tunes every parameter.
 \end{itemize}
 
 \section{Data Sources, Coverage, and Event-Type Harmonization}
 \label{app:harmonize}
-% MOVED from main-text footnote 2026-10-20 (Claude)
-When a cell-month has more than 200 events, I keep the 200 most recent. I combine the two sources without removing events that appear in both. About 30 percent of the grid-cell days with a UCDP event also have an ACLED event, so event counts and sequences include some duplicates, although the binary outcome is unaffected. UCDP coverage ends in December 2024, so outcomes in 2025 come from ACLED alone. Events recorded only by UCDP account for 4.3 percent of violent cell-months in the test period.
+For the main analyses, I use three data sources: the PRIO-GRID cell structure and covariates \citep{tollefsen2012priogrid}, ACLED events \citep{raleigh2010acled}, and UCDP georeferenced events \citep{sundberg2013ucdp}. Each event is assigned to the 0.5-degree PRIO-GRID cell that contains its coordinates and to its calendar month, which yields a panel of 23,065 cells observed from January 1989 to May 2025. The panel includes every cell with at least one event between 1989 and 2025. ACLED coverage begins on different dates by country, in 1997 for Africa, including North Africa; between 2015 and 2017 for the Middle East; between 2010 and 2020 for South and Southeast Asia; in 2018 for East Asia; in 2021 for Oceania; and in 2018 or 2020 for Europe and the Americas (2021 for Canada). It runs through May 9, 2025. UCDP events cover January 1989 to December 2024 in every region. Table~\ref{tab:data_regions} reports cells, events, and violent cell-months by region.
 
-% ADDED 2026-10-20 by Claude
-\begin{itemize}
-\item The Introduction says event types are harmonized across ACLED and UCDP. Give the mapping from UCDP violence types to ACLED event and sub-event types.
-\item ACLED coverage start year by region (training rows from 1990 rely on UCDP alone where ACLED begins later), UCDP end date (December 2024), and the overlap and UCDP-only shares reported in the Data footnote.
-\end{itemize}
+When a cell's 12-month input window has more than 200 events, the encoder input keeps the 200 most recent. I combine the two sources without removing events that appear in both. About 28 percent of the grid-cell days with a UCDP event also have an ACLED event, so event counts and sequences include some duplicates, although the binary outcome is unaffected. Because UCDP coverage ends in December 2024, outcomes in 2025 come from ACLED alone. Events recorded only by UCDP account for 4.3 percent of violent cell-months in the test period.
+
+\begin{table}[!htbp]
+\centering
+\caption{Cells, Events, and Violent Cell-Months by Region}
+\label{tab:data_regions}
+\small
+\resizebox{\textwidth}{!}{\begin{tabular}{lrrrrrrr}
+\hline
+ & & \multicolumn{3}{c}{Events} & & \multicolumn{2}{c}{February 2022 to May 2025} \\
+Region & Cells & ACLED (violent) & UCDP & First ACLED year & Violent cell-months (\%) & Cell-months & Violent \\
+\hline
+Africa & 5,296 & 373,178 (233,292) & 62,761 & 1997 & 4.2 & 211,840 & 26,856 \\
+Americas & 6,360 & 478,436 (170,323) & 48,884 & 2018 & 2.2 & 254,400 & 23,213 \\
+Asia-Pacific & 3,317 & 233,299 (81,526) & 18,433 & 2010 & 1.7 & 132,680 & 7,820 \\
+Europe & 3,873 & 498,441 (263,813) & 48,586 & 2018 & 0.8 & 154,920 & 7,239 \\
+MENA & 1,927 & 593,041 (332,761) & 127,808 & 1997 & 5.0 & 77,080 & 8,421 \\
+South Asia & 2,286 & 428,444 (108,578) & 79,446 & 2010 & 5.3 & 91,440 & 8,116 \\
+\hline
+Total & 23,059 & 2,604,839 (1,190,293) & 385,918 & & 2.9 & 922,360 & 81,665 \\
+\hline
+\end{tabular}}
+\caption*{\footnotesize \textit{Note:} Events are counted before aggregation to cell-months. Every UCDP event is a violent event. First ACLED year is the earliest coverage year of any country in the region, and coverage for many countries begins later. The violent share is over all cell-months from January 1989 to May 2025. The last two columns count the 40 outcome months of the temporal test, February 2022 to May 2025 (ACLED covers only part of May 2025). ACLED coverage ends May 9, 2025, and UCDP coverage ends December 31, 2024. A further 2,553 ACLED events (0.1 percent), mostly in Bosnia and Herzegovina and Kosovo, have no region assignment and are not counted here, and 6 of the 23,065 panel cells also have no region assignment. These events remain in every pretraining pool, including the one that holds out Europe.}
+\end{table}
+
+The PRIO-GRID data contribute 27 time-invariant cell covariates, each standardized across all panel cells, including those in the held-out region, with missing values set to the mean: (a) land cover, the share of the cell that is agricultural, aquatic vegetation, barren, forest, herbaceous, shrubland, urban, or water; (b) terrain, the mountainous share and land area; (c) child malnutrition and infant mortality, each summarized by its minimum, mean, maximum, and standard deviation within the cell; (d) travel time to the nearest major city, with the same four summaries; and (e) agriculture and climate, harvested area, main crop, the start and end of the growing season, and the start of the rainy season. Table~\ref{tab:prio_summary} reports summary statistics for these covariates.
+
+\begin{table}[!htbp]
+\centering
+\caption{PRIO-GRID Covariates, Summary Statistics}
+\label{tab:prio_summary}
+\small
+\begin{tabular}{llrrrrr}
+\hline
+Covariate & PRIO-GRID name & Missing (\%) & Mean & SD & Min & Max \\
+\hline
+\multicolumn{7}{l}{\textit{Land cover (percent of cell)}} \\
+\quad Agricultural & \texttt{agri\_gc} & 1.4 & 33.2 & 31.7 & 0.000 & 100.0 \\
+\quad Aquatic vegetation & \texttt{aquaveg\_gc} & 1.4 & 4.271 & 11.0 & 0.000 & 96.8 \\
+\quad Barren & \texttt{barren\_gc} & 1.4 & 8.664 & 24.0 & 0.000 & 100.0 \\
+\quad Forest & \texttt{forest\_gc} & 1.4 & 30.2 & 29.8 & 0.000 & 100.0 \\
+\quad Herbaceous & \texttt{herb\_gc} & 1.4 & 5.997 & 14.5 & 0.000 & 99.7 \\
+\quad Shrubland & \texttt{shrub\_gc} & 1.4 & 6.961 & 14.3 & 0.000 & 100.0 \\
+\quad Urban & \texttt{urban\_gc} & 1.4 & 0.529 & 1.989 & 0.000 & 51.7 \\
+\quad Water & \texttt{water\_gc} & 1.4 & 10.2 & 23.3 & 0.000 & 100.0 \\
+\multicolumn{7}{l}{\textit{Terrain}} \\
+\quad Mountainous share & \texttt{mountains\_mean} & 3.9 & 0.268 & 0.355 & 0.000 & 1.000 \\
+\quad Land area & \texttt{landarea} & 1.4 & 2,415 & 732.1 & 0.003 & 3,091 \\
+\multicolumn{7}{l}{\textit{Child malnutrition}} \\
+\quad Minimum & \texttt{cmr\_min} & 24.3 & 18.6 & 15.5 & 0.000 & 56.8 \\
+\quad Mean & \texttt{cmr\_mean} & 24.3 & 19.5 & 15.9 & 0.200 & 56.8 \\
+\quad Maximum & \texttt{cmr\_max} & 24.3 & 20.5 & 16.4 & 0.200 & 56.8 \\
+\quad Standard deviation & \texttt{cmr\_sd} & 24.3 & 0.653 & 1.841 & 0.000 & 22.9 \\
+\multicolumn{7}{l}{\textit{Infant mortality}} \\
+\quad Minimum & \texttt{imr\_min} & 2.9 & 452.3 & 425.1 & 24.0 & 2,031 \\
+\quad Mean & \texttt{imr\_mean} & 2.9 & 490.0 & 436.8 & 24.0 & 2,288 \\
+\quad Maximum & \texttt{imr\_max} & 2.9 & 528.9 & 457.5 & 24.0 & 3,013 \\
+\quad Standard deviation & \texttt{imr\_sd} & 2.9 & 25.0 & 58.1 & 0.000 & 825.7 \\
+\multicolumn{7}{l}{\textit{Travel time to nearest major city}} \\
+\quad Minimum & \texttt{ttime\_min} & 1.4 & 124.1 & 285.3 & 0.000 & 6,728 \\
+\quad Mean & \texttt{ttime\_mean} & 1.4 & 336.5 & 430.1 & 5.123 & 6,994 \\
+\quad Maximum & \texttt{ttime\_max} & 1.4 & 861.8 & 1,297 & 12.0 & 108,536 \\
+\quad Standard deviation & \texttt{ttime\_sd} & 1.4 & 151.9 & 152.3 & 0.000 & 3,424 \\
+\multicolumn{7}{l}{\textit{Agriculture and climate}} \\
+\quad Harvested area & \texttt{harvarea} & 11.5 & 16,258 & 21,830 & 0.001 & 185,425 \\
+\quad Main crop (categorical code) (44 categories) & \texttt{maincrop} & 11.5 & -- & -- & -- & -- \\
+\quad Growing season start (month) & \texttt{growstart} & 11.5 & 5.589 & 3.816 & 1.000 & 12.0 \\
+\quad Growing season end (month) & \texttt{growend} & 11.5 & 8.797 & 3.080 & 1.000 & 12.0 \\
+\quad Rainy season start (month) & \texttt{rainseas} & 1.4 & 6.354 & 3.315 & 1.000 & 12.0 \\
+\hline
+\end{tabular}
+\begin{minipage}{0.95\textwidth}\footnotesize\vspace{0.5ex}
+Notes. Raw values before standardization, over the 23,065 grid cells in the analysis panel (each cell counted once). Missing values are set to the covariate mean (zero after standardization) before the covariates enter the models. Main crop is a categorical code; the number of distinct codes is shown instead of moments. The source also provides seven natural-resource indicators (primary and secondary diamonds, gems, three types of gold, and petroleum) that list only cells with a deposit. After standardization and mean imputation they take a single value in every cell, so they carry no information in the models and are omitted from this table and from the covariate count. The model's input layer still has 34 columns, including these 7 constant ones. Variable definitions and units follow the PRIO-GRID codebook \citep{tollefsen2012priogrid}.
+\end{minipage}
+\end{table}
 
 \section{Baseline Features}
 \label{app:features}
-% ADDED 2026-10-20 by Claude
-\begin{itemize}
-\item Define each baseline feature used by the base model (violence lags 1, 3, 6; spatial lag as the mean of the four neighbouring cells at $t-1$; rolling violent and all-event counts; any event and log event density at $t-1$; months since the last event; the 34 PRIO-GRID covariates with their sources).
-\item State the information set (sequences and lags stop at $t-1$; months since last event and persistence use month $t$).
-\end{itemize}
+The XGBoost forecasters use the following baseline features for cell $i$ and month $t$: (a) indicators for any violent event in months $t-1$, $t-3$, and $t-6$; (b) a spatial lag, the share of the four adjacent cells with a violent event in month $t-1$; (c) counts of violent events in month $t-1$ and in months $t-3$ to $t-1$, and the count of all events in month $t-1$; (d) an indicator for any event and the log of one plus the number of events, both in month $t-1$; (e) months since the last event, set to zero when month $t$ has an event and capped at 12; and (f) the 27 PRIO-GRID covariates described in Appendix Section~\ref{app:harmonize}.
 
-
-% CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \section{Applying the Conflict Encoder to Other Domains}
-% CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \label{app:cross_domain}
-% ADDED 2026-10-20 by Claude
-% CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \begin{itemize}
-% CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \item Promised in the Discussion (fourth limitation): the conflict encoder, without further pretraining, applied to crime and dengue does not improve forecasting.
-% CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \item Describe how crime and dengue records are mapped into the conflict encoder's fields, the units, target, and shares.
-% CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \item Report both arms (frozen embedding in the gradient-boosted forecaster; fine-tuned vs.\ scratch) by share.
-% CUT 2026-11-08 (Jared, keep only the forecasting ensemble): \end{itemize}
-
-% CUT 2026-11-05 (to-do notes; nothing cites app:domain_alerts): \section{Alert Counts for Turnout, Crime, and Dengue}
-% CUT 2026-11-05 (to-do notes; nothing cites app:domain_alerts): \label{app:domain_alerts}
-% CUT 2026-11-05 (to-do notes; nothing cites app:domain_alerts): % ADDED 2026-10-20 by Claude
-% CUT 2026-11-05 (to-do notes; nothing cites app:domain_alerts): \begin{itemize}
-% CUT 2026-11-05 (to-do notes; nothing cites app:domain_alerts): \item The Discussion reports 1,204, 3,799, and 121 more true alarms at 0.25 percent. Table~\ref{tab:domains} reports only PR-AUC differences. Add these counts by held-out unit, using the same equal-alert rule as the main text.
-% CUT 2026-11-05 (to-do notes; nothing cites app:domain_alerts): \item Bootstrap intervals for Table~\ref{tab:domains} (source comment says none yet).
-% CUT 2026-11-05 (to-do notes; nothing cites app:domain_alerts): \end{itemize}
+The lags, counts, spatial lag, and event sequences use information through month $t-1$. Months since the last event and the persistence forecast use month $t$, the last month observed when the forecast for month $t+1$ is made.
 
 \section{Fine-Tuning Results by Region}
 \label{app:finetune_table}
-% ADDED 2026-10-20 by Claude: the main-text footnote cites app:finetune\_table; this header gives Table~\ref{tab:finetune_grid} its own section.
+Table~\ref{tab:share_months} converts each training share into cell-months and months of complete regional coverage. Table~\ref{tab:finetune_grid_full} reports the region-by-share fine-tuning results behind Figure~\ref{fig:finetune_gains} and Section~\ref{sec:finetune}, for the main-text encoder with all parameters tuned, and Table~\ref{tab:finetune_grid} reports the arm with only the top two layers tuned.
 
-% ADDED 2026-10-30 by Claude at Jared's request. Cell-months drawn at each share.
-% Source: outputs/share_grid_fullsrc/metrics_M_finetune_{region}_s123_f{share}_top2.csv (n_train).
-% Training window 1990-01..2020-12 = 372 months, so share x 372 = months of full regional coverage.
 \begin{table}[!htbp]
 \centering
 \caption{Training Data at Each Share, in Cell-Months and in Months of Complete Regional Coverage}
@@ -1184,17 +1143,9 @@ Mean & +0.037 & +0.004 & +0.009 & +0.005 & $-$0.023 & $-$0.022 & $-$0.014 \\
 Runs $>0$ (\%) & 64 & 47 & 49 & 40 & 26 & 26 & 18 \\
 \hline
 \end{tabular}
-\caption*{\footnotesize \textit{Note:} Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds (123, 456, 789) and five draws of the training share. Both networks choose their learning rate and weight decay on 2021 validation data. Forecasts are made from January 2022 onward. The last row is the share of region, seed, and draw runs in which the pretrained encoder scores higher. Only the top two transformer layers and the output layer are tuned, and the lower layers are frozen.}
+\caption*{\footnotesize \textit{Note:} Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds (123, 456, 789) and five draws of the training share. Both networks choose their learning rate and weight decay on 2021 validation data. Forecasts are made from January 2022 onward. The last row is the share of region, seed, and draw runs in which the pretrained encoder scores higher. Only the top two transformer layers, the final layer normalization, and the output layer are tuned, and the lower layers are frozen.}
 \end{table}
-% BULLET NOTES 2026-10-29 by Claude, for Jared to write prose from. Delete this block once the prose is written.
-\begin{itemize}
-\item What. The full region-by-share grid behind Figure~\ref{fig:finetune_gains} and the Section~\ref{sec:finetune} summary, for the M full-source encoder with all parameters tuned (Table~\ref{tab:finetune_grid_full}). Table~\ref{tab:finetune_grid} reports the top-two-layer arm for comparison.
-\item Where the gain is. From 0.25 to 1 percent the mean is positive and its interval excludes zero, +0.053 [+0.038, +0.063] at 0.25 percent, then +0.014, +0.025 and +0.014.
-\item Where it reverses. From 2.5 percent on the mean is negative and the interval excludes zero, $-$0.007, $-$0.018 and $-$0.010.
-\item By region at 0.25 percent. Five of six are positive, from +0.040 (South Asia) to +0.101 (Asia-Pacific). Africa is flat at $-$0.000.
-\item Region patterns. Asia-Pacific has the largest gains at 0.25 and 0.75 percent (+0.101, +0.141). South Asia is positive at every share up to 5 percent. Africa stays within $\pm$0.012 at every share.
-\item Versus top two layers. Tuning all parameters gives a larger gain at 0.25 percent (+0.053 vs +0.037) and keeps the mean positive through 1 percent, where the top-two arm is near zero.
-\end{itemize}
+
 
 
 

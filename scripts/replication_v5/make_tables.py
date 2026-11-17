@@ -361,9 +361,9 @@ body = r"""\resizebox{\textwidth}{!}{\begin{tabular}{lccccccc}
 \hline
 \end{tabular}}
 \caption*{\footnotesize \textit{Note:} Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds and five draws of the training share. The models are the Europe hold-out models from Section~\ref{sec:finetune}, scored on Ukraine's """ + thousands(list(n_ukr)[0]) + r""" test cell-months (forecasts made January 2022 to April 2025) without retraining. """ + (
-    r"Rows are grouped by fine-tuning arm: all parameters of the encoder and the output layer tuned (the arm in Section~\ref{sec:finetune}), and only the top two transformer layers and the output layer tuned. "
+    r"Rows are grouped by fine-tuning arm: all parameters of the encoder and the output layer tuned (the arm in Section~\ref{sec:finetune}), and only the top two transformer layers, the final layer normalization, and the output layer tuned. "
     if UKRAINE_FULL else
-    r"Only the top two transformer layers and the output layer are tuned. ") + r"""Runs $>0$ is the share of the 15 seed and draw runs in which the pretrained encoder scores higher in Ukraine. The Europe row is the same comparison across all of Europe's test cells.}
+    r"Only the top two transformer layers, the final layer normalization, and the output layer are tuned. ") + r"""Runs $>0$ is the share of the 15 seed and draw runs in which the pretrained encoder scores higher in Ukraine. The Europe row is the same comparison across all of Europe's test cells.}
 """
 write_table("ukraine_ft", srcs, body)
 
@@ -584,13 +584,13 @@ runs_row = "Runs $>0$ & & & %d/18 & & & %d/18 & & %d/18 \\\\" % (
     int((P.og > 0).sum()), int((P.qg > 0).sum()), int((P.fg > 0).sum()))
 body = r"""\begin{tabular}{lccccccccc}
 \hline
- & \multicolumn{3}{c}{Onset} & \multicolumn{3}{c}{Onset, quiet neighbours} & \multicolumn{2}{c}{Best F1} \\
+ & \multicolumn{3}{c}{Onset} & \multicolumn{3}{c}{Onset, quiet neighbors} & \multicolumn{2}{c}{Best F1} \\
 Region & Share & Base & Gain & Share & Base & Gain & Base & Gain \\
 \hline
 """ + "\n".join(lines) + "\n\\hline\n" + mean_row + "\n" + runs_row + r"""
 \hline
 \end{tabular}
-\caption*{\footnotesize \textit{Note:} Onset columns score the incidence forecasts only on cell-months with no violent event in the month before the forecast month. Quiet-neighbour columns further require no violence in the cell's spatial lag in that month. Share is the share of those cell-months with violence the next month, which is also the PR-AUC of the lagged persistence forecast there. Base is the PR-AUC of the base model, and Gain is base plus embedding minus base. Best F1 is the highest F1 over thresholds on all test cell-months. Values are means over three encoder seeds.}
+\caption*{\footnotesize \textit{Note:} Onset columns refit both forecasters on cell-months with no violent event in month $t-1$. Quiet-neighbor columns further require no violence in the cell's spatial lag in that month. Share is the share of those cell-months with violence the next month, which is also the PR-AUC of the lagged persistence forecast there. Base is the PR-AUC of the base model, and Gain is base plus embedding minus base. Best F1 is the highest F1 over thresholds on all test cell-months. Values are means over three encoder seeds.}
 """
 write_table("onset_subsets", ["outputs/eval_region_M_contrastive_e_fullsrc_loro_{region}_s{seed}.csv (B_temporal; onset, noncontig_onset, rare_event_f1)"], body)
 
@@ -637,7 +637,7 @@ write_table("sizes_frozen", ["outputs/bootstrap_ci_{S,M,L}_fullsrc_block5.csv", 
 # Tables 18 and 19 (App T.2)  tab:sizes_finetune_full (all parameters), tab:sizes_finetune (top two)
 # =============================================================================
 for label, arm, note_tail in [("sizes_finetune_full", "full", "All parameters of the encoder and the output layer are tuned."),
-                              ("sizes_finetune", "top2", "Only the top two transformer layers and the output layer are tuned.")]:
+                              ("sizes_finetune", "top2", "Only the top two transformer layers, the final layer normalization, and the output layer are tuned.")]:
     lines = []
     for i, (size, nm) in enumerate([("S", "Small (S)"), ("M", "Medium (M)"), ("L", "Large (L)")]):
         rel = "outputs/bootstrap_ft_fullsrc_%s_%s_block5.csv" % (size, arm)
@@ -763,7 +763,7 @@ for label, arm in [("finetune_grid_full", "full"), ("finetune_grid", "top2")]:
         note = r"""Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds (123, 456, 789) and five draws of the training share. All parameters of the encoder and the output layer are tuned. Both networks choose their learning rate and weight decay on 2021 validation data. Forecasts are made from January 2022 onward. The mean row is the equal-weight mean across the six regions, and its 95\% bootstrap interval, which resamples $5^\circ \times 5^\circ$ blocks of grid cells, excludes zero at every share."""
     else:
         extra = "\nRuns $>0$ (\\%) & " + " & ".join(pct_int(npos[sh] / 90.0) for sh in SHARES) + " \\\\"
-        note = r"""Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds (123, 456, 789) and five draws of the training share. Both networks choose their learning rate and weight decay on 2021 validation data. Forecasts are made from January 2022 onward. The last row is the share of region, seed, and draw runs in which the pretrained encoder scores higher. Only the top two transformer layers and the output layer are tuned, and the lower layers are frozen."""
+        note = r"""Entries are PR-AUC differences, fine-tuned pretrained encoder minus the same network trained from scratch, averaged over three encoder seeds (123, 456, 789) and five draws of the training share. Both networks choose their learning rate and weight decay on 2021 validation data. Forecasts are made from January 2022 onward. The last row is the share of region, seed, and draw runs in which the pretrained encoder scores higher. Only the top two transformer layers, the final layer normalization, and the output layer are tuned, and the lower layers are frozen."""
     body = r"""\begin{tabular}{lccccccc}
 \hline
  & \multicolumn{7}{c}{Share of the held-out region's training data (\%)} \\

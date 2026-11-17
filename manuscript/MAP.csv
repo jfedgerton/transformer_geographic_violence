@@ -14,6 +14,7 @@ figures/fig_brazil_deaths_map.pdf,figures_tables/fig_brazil_deaths_map.pdf,scrip
 figures/fig_placebo_gradient.pdf,figures_tables/v5_20261108/fig16_brazil_random/fig_placebo_gradient_M.pdf,scripts/replication_v5/figures.R fig16,78d9e4daff3cade8,identical_except_pdf_dates
 figures/fig_boot_share_regions_M.png,figures_tables/v5_20261108/fig17_share_regions/fig_boot_share_regions.png,scripts/replication_v5/figures.R fig17,8c138e04de929afa,identical
 figures/fig_boot_persistence_M.png,figures_tables/v5_20261108/fig18_persistence_gap/fig_boot_persistence.png,scripts/replication_v5/figures.R fig18,462d4c2e3ac6e0d1,identical
+figures/fig_sizes_S_L.png,figures_tables/fig_sizes/fig_sizes_S_L.png,figures.R --one sizes (stage 09),5492d2534a75b7d9,identical
 figures/fig_cell_alerts_countries_wide_M_fullsrc.png,outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc_print_opt4b_countries_wide.png,figures.R --one fig19 (stage 08),4095a0a9112cbcb5,identical
 tables/table3_nested_embbase.tex,figures_tables/tables_v5_20261108b/tab_nested_embbase.tex,scripts/replication_v5/make_tables.py,,numbers_identical
 tables/tab_random_control_temporal.tex,figures_tables/tables_v5_20261108b/tab_random_temporal.tex,scripts/replication_v5/make_tables.py,,numbers_identical
