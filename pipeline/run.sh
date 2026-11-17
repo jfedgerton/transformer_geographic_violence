@@ -372,7 +372,7 @@ run_09() {
   wrapcpu figures 16G 01:00:00 "$D" \
     "test -f outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc_print_opt4b_countries_wide.png || { echo FIG19_MISSING_stage06_skipped_fig_cell_alerts.R; exit 1; }; mkdir -p $FO; \
      Rscript $V/figures.R $FO $ROOT; Rscript $V/figures.R --one sizes figures_tables/fig_sizes" >/dev/null
-  wrapcpu tables 8G 00:30:00 "$D" "TABLES_ROOT=$ROOT venv/bin/python $V/make_tables.py --ukraine-full" >/dev/null
+  wrapcpu tables 8G 00:30:00 "$D" "TABLES_ROOT=$ROOT venv/bin/python $V/make_tables.py --ukraine-full; venv/bin/python $V/tab_prio_summary.py" >/dev/null
 }
 
 # =====================================================================================================================
