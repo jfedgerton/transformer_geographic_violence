@@ -362,6 +362,7 @@ pre_09() {
   absent $FO figures_tables/tables_v5
   if ! on 03; then need outputs/persistence_month_t_M_fullsrc.csv; fi
   if ! on 05; then need outputs/bootstrap_ci_M_fullsrc_block5.csv outputs/bootstrap_ci_M_fullsrc_block5_shares.csv outputs/bootstrap_ft_fullsrc_M_full_block5.csv; fi
+  if ! on 05; then need outputs/bootstrap_ci_S_fullsrc_block5.csv outputs/bootstrap_ci_L_fullsrc_block5.csv outputs/bootstrap_ft_fullsrc_S_full_block5.csv outputs/bootstrap_ft_fullsrc_L_full_block5.csv; fi
   if ! on 06; then need outputs/cell_alerts_persistence_M_fullsrc.csv.gz outputs/cell_alerts_incidence_M_fullsrc.csv.gz outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc_print_opt4b_countries_wide.png; fi
   if ! on 08; then need outputs/crossdomain/xd_placebo_boot_v3M.csv outputs/crossdomain/xd_m_boot.csv outputs/crossdomain/xd_s_boot.csv; fi
 }
@@ -370,7 +371,7 @@ run_09() {
   D=$(ids $D_BOOT $D_ALERT $D_UKR $D_DOM $D_BRBOOT $D_PERS)
   wrapcpu figures 16G 01:00:00 "$D" \
     "test -f outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc_print_opt4b_countries_wide.png || { echo FIG19_MISSING_stage06_skipped_fig_cell_alerts.R; exit 1; }; mkdir -p $FO; \
-     Rscript $V/figures.R $FO $ROOT" >/dev/null
+     Rscript $V/figures.R $FO $ROOT; Rscript $V/figures.R --one sizes figures_tables/fig_sizes" >/dev/null
   wrapcpu tables 8G 00:30:00 "$D" "TABLES_ROOT=$ROOT venv/bin/python $V/make_tables.py --ukraine-full" >/dev/null
 }
 

@@ -10,11 +10,12 @@
 #   Rscript figures.R --one fig19 <cell_alerts_csv.gz> <ne_50m_zip> <target> <out.png>     (was figures_tables/fig_cell_alerts.R)
 #   Rscript figures.R --one ukr_map <cells_csv> [shapefile] [out_dir]                      (was scripts/phase4_scaling/fig_ukraine_map.R)
 #   UKR_ARM=top2|full Rscript figures.R --one ukr_gain <csv_0.0025> <csv_0.1> <out_dir> [shp] (was replication_v5/fig_ukraine_alert_gain_arm.R)
+#   Rscript figures.R --one sizes <out_dir>   (2026-11-17, new: appendix encoder-size figure, rows S and L, columns the three main results)
 # In this mode only that block runs, in its own R session as before; its commandArgs() line is replaced by the passed args.
 # Parity: pipeline/tests/parity_phase2.py figures (old scripts vs this file on the same inputs; PNG byte-identical,
 # PDF identical apart from creation/modification dates).
 args0 <- commandArgs(trailingOnly = TRUE)
-ONE_IDS <- c("fig19", "ukr_map", "ukr_gain")
+ONE_IDS <- c("fig19", "ukr_map", "ukr_gain", "sizes")
 if (length(args0) >= 2 && args0[1] == "--one") {
   ONE <- args0[2]; PASS <- args0[-(1:2)]
   if (!(ONE %in% ONE_IDS)) stop("--one needs one of: ", paste(ONE_IDS, collapse = ", "))
@@ -1640,6 +1641,72 @@ p <- ggplot() +
 ggsave(f_pdf, p, width = 9.0, height = 5.0)
 ggsave(f_png, p, width = 9.0, height = 5.0, dpi = 300)
 cat("[done]", f_pdf, "\n[done]", f_png, "\n[done]", f_csv, "\n")
+  })
+}
+# ===================== sizes: appendix encoder-size figure (new 2026-11-17; single-figure mode only) =====================
+# Rows: small (S) and large (L) encoders. Columns: the three main results, (A) base + embedding minus persistence and
+# (B) base + embedding minus base by held-out region (temporal test), (C) fine-tuned pretrained minus scratch by training
+# share (all parameters tuned, equal-weight mean of the six regions). Points are estimates; bars are 95% intervals from the
+# 5x5-degree block bootstrap. Within a column both rows share the y range. Inputs are the same files as tab:sizes_frozen
+# and tab:sizes_finetune_full (make_tables.py).
+if (ONE == "sizes") {
+  cat("[figures.R] sizes <- appendix encoder-size figure\n")
+  local({
+suppressPackageStartupMessages(library(tidyverse))
+set.seed(123)
+args <- PASS
+OUT <- if (length(args) >= 1) args[1] else "figures_tables/fig_sizes"
+dir.create(OUT, recursive = TRUE, showWarnings = FALSE)
+reg_lab <- c(africa = "Africa", americas = "Americas", asia_pacific = "Asia-\nPacific", europe = "Europe", mena = "MENA",
+             south_asia = "South\nAsia", ALL = "All\nregions")
+share_lab <- c("0.0025" = "0.25%", "0.005" = "0.5%", "0.0075" = "0.75%", "0.01" = "1%", "0.025" = "2.5%", "0.05" = "5%", "0.1" = "10%")
+size_lab <- c(S = "Small encoder (S)", L = "Large encoder (L)")
+comp_lab <- c(persistence = "A. Base + embedding minus persistence", nested = "B. Base + embedding minus base",
+              ft = "C. Fine-tuned pretrained minus scratch")
+rows <- list()
+for (z in c("S", "L")) {
+  f <- sprintf("outputs/bootstrap_ci_%s_fullsrc_block5.csv", z)
+  stopifnot(file.exists(f))
+  b <- read_csv(f, show_col_types = FALSE) %>% filter(comparison %in% c("persistence", "nested"))
+  stopifnot(nrow(b) == 14, all(b$region %in% names(reg_lab)), all(b$lo95 <= b$estimate), all(b$estimate <= b$hi95))
+  rows[[length(rows) + 1]] <- b %>% transmute(size = z, comp = comparison, x = unname(reg_lab[region]), estimate, lo95, hi95)
+  g <- sprintf("outputs/bootstrap_ft_fullsrc_%s_full_block5.csv", z)
+  stopifnot(file.exists(g))
+  ft <- read_csv(g, show_col_types = FALSE, col_types = cols(.default = col_character())) %>%
+    filter(region == "ALL", grepl("^ft_", comparison)) %>%
+    mutate(across(c(estimate, lo95, hi95), as.numeric), sh = sub("^ft_", "", comparison))
+  stopifnot(nrow(ft) == 7, all(ft$size == z), all(ft$ft == "full"), all(ft$status == "ok"), all(ft$sh %in% names(share_lab)),
+            all(ft$lo95 <= ft$estimate), all(ft$estimate <= ft$hi95))
+  rows[[length(rows) + 1]] <- ft %>% transmute(size = z, comp = "ft", x = unname(share_lab[sh]), estimate, lo95, hi95)
+}
+d <- bind_rows(rows)
+stopifnot(nrow(d) == 2 * (14 + 7), !anyNA(d$estimate), !anyNA(d$x))
+panel_levels <- as.vector(t(outer(size_lab[c("S", "L")], comp_lab[c("persistence", "nested", "ft")], paste, sep = "\n")))
+d <- d %>% mutate(x = factor(x, levels = c(unname(reg_lab), unname(share_lab))),
+                  panel = factor(paste(size_lab[size], comp_lab[comp], sep = "\n"), levels = panel_levels))
+stopifnot(!anyNA(d$x), !anyNA(d$panel))
+# same y range for both rows within a column (invisible points at the column-wide extremes, zero included)
+rng <- d %>% group_by(comp) %>% summarise(lo = min(lo95, 0), hi = max(hi95, 0), .groups = "drop")
+blank <- d %>% group_by(panel, comp) %>% summarise(x = first(x), .groups = "drop") %>% left_join(rng, by = "comp") %>%
+  pivot_longer(c(lo, hi), values_to = "estimate")
+p <- ggplot(d, aes(x, estimate)) +
+  geom_hline(yintercept = 0, colour = "grey55", linewidth = 0.4) +
+  geom_blank(data = blank) +
+  geom_errorbar(aes(ymin = lo95, ymax = hi95), width = 0.25, linewidth = 0.5) +
+  geom_point(size = 1.9) +
+  facet_wrap(~ panel, nrow = 2, scales = "free") +
+  scale_x_discrete(limits = function(v) intersect(c(unname(reg_lab), unname(share_lab)), v)) +   # keep region and share order in every free-scale panel
+  labs(x = NULL, y = "Difference in PR-AUC") +
+  theme_bw(base_size = 9) +
+  theme(panel.grid.minor = element_blank(), panel.grid.major.x = element_blank(),
+        strip.background = element_rect(fill = "grey92", colour = NA), strip.text = element_text(size = 7.5),
+        axis.text.x = element_text(size = 6.8, lineheight = 0.85))
+f_png <- file.path(OUT, "fig_sizes_S_L.png"); f_pdf <- file.path(OUT, "fig_sizes_S_L.pdf"); f_csv <- file.path(OUT, "fig_sizes_S_L.csv")
+ggsave(f_png, p, width = 9.5, height = 5.4, dpi = 300)
+ggsave(f_pdf, p, width = 9.5, height = 5.4)
+write_csv(d %>% select(size, comp, x, estimate, lo95, hi95), f_csv)
+print(d %>% filter(x %in% c("All\nregions", "1%", "10%")) %>% select(size, comp, x, estimate, lo95, hi95), n = 20)
+cat("[done]", f_png, "\n[done]", f_pdf, "\n[done]", f_csv, "\n")
   })
 }
 cat("[figures.R] done\n")

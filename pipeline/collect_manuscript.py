@@ -30,6 +30,7 @@ FIG = {
  "figures/fig_placebo_gradient.pdf": (V5 + "/fig16_brazil_random/fig_placebo_gradient_M.pdf", "scripts/replication_v5/figures.R fig16"),
  "figures/fig_boot_share_regions_M.png": (V5 + "/fig17_share_regions/fig_boot_share_regions.png", "scripts/replication_v5/figures.R fig17"),
  "figures/fig_boot_persistence_M.png": (V5 + "/fig18_persistence_gap/fig_boot_persistence.png", "scripts/replication_v5/figures.R fig18"),
+ "figures/fig_sizes_S_L.png": ("figures_tables/fig_sizes/fig_sizes_S_L.png", "figures.R --one sizes (stage 09)"),
  "figures/fig_cell_alerts_countries_wide_M_fullsrc.png": ("outputs/cell_alerts_fig_M_fullsrc/fig_cell_alerts_incidence_M_fullsrc_print_opt4b_countries_wide.png", "figures.R --one fig19 (stage 08)"),
 }
 # \input tables in the manuscript -> pipeline table
