@@ -59,6 +59,10 @@ def fmt(x):
 
 rows, lines = [], []
 for g, vs in GROUPS:
+    if g == "Natural resources":   # constant after build_panel.py step prio (source lists only deposit cells); carries no information
+        for v, _ in vs:
+            assert raw[v].dropna().nunique() <= 1, v
+        continue
     lines.append(r"\multicolumn{7}{l}{\textit{" + g + r"}} \\")
     for v, lab in vs:
         s = raw[v]; obs = s.dropna()
@@ -74,7 +78,7 @@ for g, vs in GROUPS:
         extra = f" ({stats['ncat']:.0f} categories)" if v == "maincrop" else ""
         lines.append(f"\\quad {lab}{extra} & \\texttt{{{v.replace('_', chr(92) + '_')}}} & {'--' if pd.isna(stats['miss']) else format(stats['miss'], '.1f')} & {fmt(stats['mean'])} & {fmt(stats['sd'])} & {fmt(stats['min'])} & {fmt(stats['max'])} \\\\")
 df = pd.DataFrame(rows)
-assert len(df) == 34
+assert len(df) == 27
 os.makedirs(os.path.dirname(OUT_TEX), exist_ok=True)
 df.to_csv(OUT_CSV, index=False)
 tex = r"""\begin{table}[!htbp]
@@ -90,7 +94,7 @@ Covariate & PRIO-GRID name & Missing (\%) & Mean & SD & Min & Max \\
 \hline
 \end{tabular}
 \begin{minipage}{0.95\textwidth}\footnotesize\vspace{0.5ex}
-Notes. Raw values before standardization, over the """ + f"{len(cells):,}" + r""" grid cells in the analysis panel (each cell counted once). Missing values are set to the covariate mean (zero after standardization) before the covariates enter the models. Main crop is a categorical code; the number of distinct codes is shown instead of moments. For the seven natural-resource indicators the source lists only cells with a deposit, so the Mean column gives the share of cells with a deposit and absent cells are coded as missing. After standardization and mean imputation these seven indicators are constant across cells and carry no information in the models. Variable definitions and units follow the PRIO-GRID codebook \citep{tollefsen2012priogrid}.
+Notes. Raw values before standardization, over the """ + f"{len(cells):,}" + r""" grid cells in the analysis panel (each cell counted once). Missing values are set to the covariate mean (zero after standardization) before the covariates enter the models. Main crop is a categorical code; the number of distinct codes is shown instead of moments. The source also provides seven natural-resource indicators (primary and secondary diamonds, gems, three types of gold, and petroleum) that list only cells with a deposit. After standardization and mean imputation they take a single value in every cell, so they carry no information in the models and are omitted from this table and from the covariate count. Variable definitions and units follow the PRIO-GRID codebook \citep{tollefsen2012priogrid}.
 \end{minipage}
 \end{table}
 """
