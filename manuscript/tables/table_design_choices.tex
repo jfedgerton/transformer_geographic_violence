@@ -17,7 +17,7 @@
  & 1. Unit and records & PRIO-GRID cell-month; records are ACLED and UCDP events in the cell over the prior 12 months, keeping the 200 most recent \\
  & 2. Fields and vocabularies & 7 fields: event type, sub-event type, actor 1, actor 2, two actor types, and month offset (months before the unit's month, 1--12); the 500 most frequent actors are kept, the rest map to ``unknown'' \\
  & 3. Embedding & $d = 128$, one embedding table per field \\
- & 4. Unit-level context & 34 PRIO-GRID covariates, z-scored and added to the summary token; time enters only through the month-offset field \\
+ & 4. Unit-level context & 27 PRIO-GRID covariates, z-scored and added to the summary token; time enters only through the month-offset field \\
  & 5. Encoder & 4 layers, 8 attention heads, feed-forward width $4d$ \\
 %\midrule
 \Block{4-1}<\rotate\scriptsize>{Pretrain, then transfer\\ (Figure~\ref{fig:architecture}, Panel B)}

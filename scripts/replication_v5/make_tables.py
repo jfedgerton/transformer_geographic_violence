@@ -677,7 +677,7 @@ for lab, share, baseline, model in [(r"Pretrained vs.\ random encoder, 0.25\%", 
     lines.append("& " + " & ".join(bra(100 * x["ci_2way_lo"], 100 * x["ci_2way_hi"], 1) for x in xr) + " \\\\")
 lines.append(r"\hline")
 xr = [xd_row(SRC[z][0], "C0_" + z, 0.01, "scratch", "top2", "xd boot " + z) for z in ["S", "M", "L"]]
-lines.append(r"Pre-registered fine-tuning test, 1\% & " + " & ".join(sa(100 * x["rel_reduction"], 1) for x in xr) + " \\\\")
+lines.append(r"Fine-tuned vs.\ scratch, top two layers, 1\% & " + " & ".join(sa(100 * x["rel_reduction"], 1) for x in xr) + " \\\\")
 lines.append("& " + " & ".join(bra(100 * x["ci_cell_lo"], 100 * x["ci_cell_hi"], 1) for x in xr) + " \\\\")
 body = r"""\begin{tabular}{lccc}
 \hline
@@ -687,7 +687,7 @@ Comparison & Small (S) & Medium (M) & Large (L) \\
 \hline
 \end{tabular}
 \begin{minipage}{0.92\textwidth}\footnotesize\vspace{0.5ex}
-Notes. Positive values favor the first model named. Means over three encoder seeds (123, 456, 789) and five draws of the training share, one draw with all data. The frozen-embedding rows above the line carry 95\% paired bootstrap intervals that resample test cells and seed-draw pairs, as in Table~\ref{tab:brazil}. The pre-registered fine-tuning test compares the encoder with its top two layers and output layer tuned against the same network trained from scratch, and carries the cell bootstrap interval used for the pre-registered rule in Section~\ref{sec:brazil}. Each encoder is the size-matched encoder pretrained without the Americas.
+Notes. Positive values favor the first model named. Means over three encoder seeds (123, 456, 789) and five draws of the training share, one draw with all data. The frozen-embedding rows above the line carry 95\% paired bootstrap intervals that resample test cells and seed-draw pairs, as in Table~\ref{tab:brazil}. The fine-tuning row compares the encoder with its top two layers and output layer tuned against the same network trained from scratch, with a 95\% bootstrap interval that resamples test cells only. Each encoder is the size-matched encoder pretrained without the Americas.
 \end{minipage}
 """
 write_table("sizes_brazil", ["outputs/crossdomain/xd_s_boot.csv (rungs C1_S, C0_S)",
