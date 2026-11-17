@@ -626,7 +626,7 @@ Comparison & Small (S) & Medium (M) & Large (L) \\
 \hline
 \end{tabular}
 \begin{minipage}{0.98\textwidth}\footnotesize\vspace{0.5ex}
-Notes. Equal-weight mean of the six held-out regions, averaged over three encoder seeds (123, 456, 789). Brackets are 95\% intervals from 1,000 paired bootstrap replicates resampling $5^\circ \times 5^\circ$ blocks of grid cells. M is the main-text encoder; for M the gain over persistence is positive in all six regions and the gain over the base model is positive in 18 of 18 region-seed runs. Built from outputs/bootstrap\_ci\_\{S,M,L\}\_fullsrc\_block5.csv and the matching \_rand.csv files.
+Notes. Equal-weight mean of the six held-out regions, averaged over three encoder seeds (123, 456, 789). Brackets are 95\% intervals from 1,000 paired bootstrap replicates resampling $5^\circ \times 5^\circ$ blocks of grid cells. M is the main-text encoder; for M the gain over persistence is positive in all six regions and the gain over the base model is positive in 18 of 18 region-seed runs.
 \end{minipage}
 """
 write_table("sizes_frozen", ["outputs/bootstrap_ci_{S,M,L}_fullsrc_block5.csv", "outputs/bootstrap_ci_{S,M,L}_fullsrc_block5_rand.csv",
