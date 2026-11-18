@@ -162,7 +162,7 @@ Other data labeling work has bridged the two approaches \citep{laurer2024less, b
 The second group of research in this area has shown how computational and deep learning methods can extract features from high-dimensional data such as text, image, audio, and video \citep{dietrich2019pitch, tarr2023automated, zhang2019casm, knox2021dynamic}. \cite{rodriguez2023embedding} develop embedding regression, which measures how groups use the same words differently. For selected political terms in the Congressional Record, they find greater differences by party than by gender. Other work has used transformers and other deep learning approaches to study affect, demographic cues, and behavioral signals from audio, image, and video data \citep{mestre2026audio, jeon2026faces, wu2022marmot}.
 \subsection{Forecasting Conflict}
 Researchers have extensively used statistical and machine learning approaches to forecast conflict processes. Much of the early work used logistic regression or tree-based approaches for forecasting \citep{goldstone2010pitf, ward2010perils, muchlinski2016comparing, blair2020forecasting, hegre2019views}. %This work produced substantial gains where violence is already under way, but forecasting the onset of violence or changes in its intensity has proven far harder, and many models fail to outperform simple persistence or no-change baselines on these tasks \citep{vesco2022united, mueller2018reading}.
-Recent scholarship has turned to text-derived features \citep{mueller2018reading} and deep learning, including convolutional and recurrent networks \citep{radford2022highres}, and has begun to apply transformer architectures to conflict time series \citep{walterskirchen2024tft}. \cite{radford2022highres} uses a convolutional long short-term memory network to forecast violence at the PRIO-GRID cell-month level, using a grid of 0.5$^\circ$ cells covering Africa, so that each cell's forecast draws on the recent history of violence in surrounding cells.
+Recent scholarship has turned to text-derived features \citep{mueller2018reading} and deep learning, including convolutional and recurrent networks \citep{radford2022highres}, and has begun to apply transformer architectures to conflict time series \citep{walterskirchen2024tft}. \cite{radford2022highres} uses a convolutional long short-term memory network to forecast the change in logged state-based battle deaths at the PRIO-GRID cell-month level, using a grid of 0.5$^\circ$ cells covering Africa, so that each cell's forecast draws on the recent history of violence in surrounding cells.
 
 Other work has adopted ensemble approaches by pooling information across models to improve forecasts \citep{beger2014irregular, montgomery2012ebma, vesco2022united}. \cite{hegre2019views} combine several models to forecast state-based conflict, non-state conflict, and one-sided violence against civilians. The authors train models on different groups of features, such as conflict history, natural and social geography, protest, and political institutions, and pool their estimates. For state-based conflict at the grid-cell-month level, the resulting ensemble reaches an area under the precision--recall curve (PR-AUC) of $0.277$, with higher values indicating better forecasting.
 
@@ -172,7 +172,7 @@ Although there is extensive research on applications of transformers \citep{bran
 First, other academic fields have begun applying transformers to domain-specific data beyond text, image, audio, and video. These applications expand the questions scholars can study and the predictions they can make. In particular, biochemists, genomicists, medical researchers, and climate scientists are using large existing stores of high-dimensional data---e.g., molecular representations \citep{chithrananda2020chemberta, schwaller2019molecular}, protein and DNA sequences \citep{ji2021dnabert, lin2023esmfold}, single-cell gene expression \citep{theodoris2023geneformer}, patient health records \citep{li2020behrt, rasmy2021medbert}, and gridded climate data \citep{nguyen2023climax, bi2023pangu}---to model complex relationships. %They then use these encoders to inform their research. For example, biochemists predict molecular properties relevant to drug discovery and the products of chemical reactions \citep{chithrananda2020chemberta, schwaller2019molecular}, as well as protein structure directly from sequence \citep{lin2023esmfold}. Genomicists identify regulatory elements in DNA \citep{ji2021dnabert} and, with limited task-specific data, predict how disrupting genes alters cellular networks linked to disease \citep{theodoris2023geneformer}. Medical researchers forecast patients' future diagnoses from their coded medical histories \citep{li2020behrt, rasmy2021medbert}, and climate scientists produce medium-range weather forecasts that rival operational forecasting systems \citep{bi2023pangu, nguyen2023climax}. 
 Broadly, transformers in these fields allow scholars to build on large existing data to make predictions where new data are scarce and accuracy is important. 
 
-Second, political science questions and data are well-suited for transfer learning. Indeed, much of the data the field relies on are high-dimensional---e.g., extensive survey responses, voter profiles, roll-call votes \citep{poole1985spatial}, alliance treaty provisions \citep{leeds2002atop}, and protest events \citep{larson2019protest}. Moreover, scholars often need accurate predictions or labels when data for the specific question at hand are scarce. This suggests that a framework for developing and assessing transformers beyond media data could benefit multiple areas of political science research. 
+Second, political science questions and data are well-suited for transfer learning. Indeed, much of the data the field relies on are high-dimensional---e.g., extensive survey responses, voter profiles, roll-call votes \citep{poole1985spatial}, alliance treaty provisions \citep{leeds2002atop}, and protest participation \citep{larson2019protest}. Moreover, scholars often need accurate predictions or labels when data for the specific question at hand are scarce. This suggests that a framework for developing and assessing transformers beyond media data could benefit multiple areas of political science research. 
 
 
 \section{Data and Modeling Approach}
@@ -1033,24 +1033,24 @@ Covariate & PRIO-GRID name & Missing (\%) & Mean & SD & Min & Max \\
 \quad Water & \texttt{water\_gc} & 1.4 & 10.2 & 23.3 & 0.000 & 100.0 \\
 \multicolumn{7}{l}{\textit{Terrain}} \\
 \quad Mountainous share & \texttt{mountains\_mean} & 3.9 & 0.268 & 0.355 & 0.000 & 1.000 \\
-\quad Land area & \texttt{landarea} & 1.4 & 2,415 & 732.1 & 0.003 & 3,091 \\
-\multicolumn{7}{l}{\textit{Child malnutrition}} \\
+\quad Land area (km$^2$) & \texttt{landarea} & 1.4 & 2,415 & 732.1 & 0.003 & 3,091 \\
+\multicolumn{7}{l}{\textit{Child malnutrition (percent of children under 5)}} \\
 \quad Minimum & \texttt{cmr\_min} & 24.3 & 18.6 & 15.5 & 0.000 & 56.8 \\
 \quad Mean & \texttt{cmr\_mean} & 24.3 & 19.5 & 15.9 & 0.200 & 56.8 \\
 \quad Maximum & \texttt{cmr\_max} & 24.3 & 20.5 & 16.4 & 0.200 & 56.8 \\
 \quad Standard deviation & \texttt{cmr\_sd} & 24.3 & 0.653 & 1.841 & 0.000 & 22.9 \\
-\multicolumn{7}{l}{\textit{Infant mortality}} \\
+\multicolumn{7}{l}{\textit{Infant mortality (deaths per 10,000 live births)}} \\
 \quad Minimum & \texttt{imr\_min} & 2.9 & 452.3 & 425.1 & 24.0 & 2,031 \\
 \quad Mean & \texttt{imr\_mean} & 2.9 & 490.0 & 436.8 & 24.0 & 2,288 \\
 \quad Maximum & \texttt{imr\_max} & 2.9 & 528.9 & 457.5 & 24.0 & 3,013 \\
 \quad Standard deviation & \texttt{imr\_sd} & 2.9 & 25.0 & 58.1 & 0.000 & 825.7 \\
-\multicolumn{7}{l}{\textit{Travel time to nearest major city}} \\
+\multicolumn{7}{l}{\textit{Travel time to nearest major city (minutes)}} \\
 \quad Minimum & \texttt{ttime\_min} & 1.4 & 124.1 & 285.3 & 0.000 & 6,728 \\
 \quad Mean & \texttt{ttime\_mean} & 1.4 & 336.5 & 430.1 & 5.123 & 6,994 \\
 \quad Maximum & \texttt{ttime\_max} & 1.4 & 861.8 & 1,297 & 12.0 & 108,536 \\
 \quad Standard deviation & \texttt{ttime\_sd} & 1.4 & 151.9 & 152.3 & 0.000 & 3,424 \\
 \multicolumn{7}{l}{\textit{Agriculture and climate}} \\
-\quad Harvested area & \texttt{harvarea} & 11.5 & 16,258 & 21,830 & 0.001 & 185,425 \\
+\quad Harvested area (hectares) & \texttt{harvarea} & 11.5 & 16,258 & 21,830 & 0.001 & 185,425 \\
 \quad Main crop (categorical code) (44 categories) & \texttt{maincrop} & 11.5 & -- & -- & -- & -- \\
 \quad Growing season start (month) & \texttt{growstart} & 11.5 & 5.589 & 3.816 & 1.000 & 12.0 \\
 \quad Growing season end (month) & \texttt{growend} & 11.5 & 8.797 & 3.080 & 1.000 & 12.0 \\
@@ -1058,7 +1058,7 @@ Covariate & PRIO-GRID name & Missing (\%) & Mean & SD & Min & Max \\
 \hline
 \end{tabular}
 \begin{minipage}{0.95\textwidth}\footnotesize\vspace{0.5ex}
-Notes. Raw values before standardization, over the 23,065 grid cells in the analysis panel (each cell counted once). Missing values are set to the covariate mean (zero after standardization) before the covariates enter the models. Main crop is a categorical code; the number of distinct codes is shown instead of moments. The source also provides seven natural-resource indicators (primary and secondary diamonds, gems, three types of gold, and petroleum) that list only cells with a deposit. After standardization and mean imputation they take a single value in every cell, so they carry no information in the models and are omitted from this table and from the covariate count. The model's input layer still has 34 columns, including these 7 constant ones. Variable definitions and units follow the PRIO-GRID codebook \citep{tollefsen2012priogrid}.
+Notes. Raw values before standardization, over the 23,065 grid cells in the analysis panel (each cell counted once). Missing values are set to the covariate mean (zero after standardization) before the covariates enter the models. Main crop is a categorical code; the number of distinct codes is shown instead of moments. The source also provides seven natural-resource indicators (primary and secondary diamonds, gems, three types of gold, and petroleum) that list only cells with a deposit. After standardization and mean imputation they take a single value in every cell, so they carry no information in the models and are omitted from this table and from the covariate count. The model's input layer still has 34 columns, including these 7 constant ones. Variable definitions and units follow the PRIO-GRID codebook \citep{tollefsen2015codebook}, which lists the original source of each variable.
 \end{minipage}
 \end{table}
 
